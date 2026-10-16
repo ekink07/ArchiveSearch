@@ -1,0 +1,16 @@
+# Metin dosyaları depoda LF tutulur; ikili dosyalar olduğu gibi.
+* text=auto
+*.sln text eol=crlf
+*.png binary
+*.ico binary
+*.exe binary
+*.zip binary
+*.rar binary
+*.7z binary
+*.tar binary
+*.gz binary
+*.bz2 binary
+*.xz binary
+*.zst binary
+*.iso binary
+*.bin binary

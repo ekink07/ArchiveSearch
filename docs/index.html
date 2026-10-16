@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arşiv Ara</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Search inside ZIP, RAR, 7z and TAR archives instantly, without extracting them. Free, open source, portable Windows app.">
+<meta name="author" content="MaledictusMaggot">
+<meta name="theme-color" content="#F2F5F8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#08121F" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="images/icon-64.png" type="image/png" sizes="64x64">
+<link rel="icon" href="images/logo-arsiv.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: "arşivin içindekiler listesi" — sayfa, bir arşivin merkezi dizini gibi satırlar, sütunlar ve eşleşme vurgularıyla kurulu.
+   Renkler logodan (images/logo-arsiv.svg): lacivert gövde, mavi "ARA" rozeti, turuncu ok, kehribar klasörler. */
+:root {
+  --bg: #F2F5F8;
+  --panel: #FFFFFF;
+  --ink: #0B1B2E;
+  --muted: #536477;
+  --line: #D8E0E8;
+  --accent: #0F6BBF;
+  --cta: #F7861F;
+  --cta-ink: #0B1B2E;
+  --hit: #FFD38A;
+  --hit-ink: #0B1B2E;
+  --code-bg: #0B1B2E;
+  --code-ink: #EAF2F9;
+  --code-muted: #8FA3B7;
+  --shadow: 0 1px 2px rgb(11 27 46 / 0.06), 0 12px 32px -12px rgb(11 27 46 / 0.2);
+
+  --font-display: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  --step--1: 0.84rem;
+  --step-0: 1rem;
+  --step-1: 1.2rem;
+  --step-2: 1.6rem;
+  --step-3: clamp(2.1rem, 4.6vw, 3.4rem);
+  --radius: 10px;
+  --maxw: 1120px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #08121F; --panel: #0E1B2C; --ink: #E9F1F8; --muted: #9AACBE; --line: #1E3047;
+    --accent: #4DB4F2; --cta: #FF9233; --cta-ink: #1A0E04; --hit: #8C4F0C; --hit-ink: #FFF1DC;
+    --code-bg: #050D17; --code-ink: #E9F1F8; --code-muted: #8EA2B6;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 16px 40px -16px rgb(0 0 0 / 0.75);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #08121F; --panel: #0E1B2C; --ink: #E9F1F8; --muted: #9AACBE; --line: #1E3047;
+  --accent: #4DB4F2; --cta: #FF9233; --cta-ink: #1A0E04; --hit: #8C4F0C; --hit-ink: #FFF1DC;
+  --code-bg: #050D17; --code-ink: #E9F1F8; --code-muted: #8EA2B6;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 16px 40px -16px rgb(0 0 0 / 0.75);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 var(--step-0)/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: inherit; text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.1; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+.eyebrow { font: 600 var(--step--1)/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+
+/* Üst çubuk */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 var(--step-1)/1 var(--font-display); }
+.brand img { width: 34px; height: 34px; }
+.top nav { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.top nav a.link { text-decoration: none; color: var(--muted); font-size: var(--step--1); font-weight: 500; }
+.top nav a.link:hover { color: var(--ink); }
+.langs { display: flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.langs button { border: 0; background: transparent; color: var(--muted); font: 600 0.75rem/1 var(--font-mono); padding: 6px 9px; border-radius: 999px; cursor: pointer; }
+.langs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+/* Hero */
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 48px; align-items: center; padding-block: 56px 48px; }
+.hero h1 { font-size: var(--step-3); margin-top: 14px; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { margin-top: 18px; font-size: var(--step-1); color: var(--muted); max-width: 34em; }
+.ctas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 8px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.btn.primary { background: var(--cta); border-color: var(--cta); color: var(--cta-ink); }
+.btn small { font: 500 0.72rem/1 var(--font-mono); opacity: 0.8; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: var(--muted); font: 500 var(--step--1)/1.4 var(--font-mono); }
+
+/* Canlı demo: uygulama penceresinin sade bir kopyası */
+.demo { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+.demo-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.demo-bar img { width: 18px; height: 18px; }
+.demo-bar span { font: 600 var(--step--1)/1 var(--font-body); color: var(--muted); }
+.demo-search { padding: 12px 14px 8px; }
+.demo-search label { display: block; font: 600 0.72rem/1 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.demo-search input { width: 100%; font: 500 var(--step-1)/1.2 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-bottom: 2px solid var(--accent); border-radius: 8px; padding: 10px 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 14px 10px; }
+.chips button { font: 500 0.75rem/1 var(--font-mono); border: 1px dashed var(--line); background: transparent; color: var(--muted); border-radius: 6px; padding: 6px 8px; cursor: pointer; }
+.chips button:hover { color: var(--ink); border-color: var(--muted); }
+.listing-scroll { max-height: 316px; overflow: auto; border-top: 1px solid var(--line); }
+table.listing { width: 100%; border-collapse: collapse; font: 400 0.82rem/1.35 var(--font-mono); font-variant-numeric: tabular-nums; }
+.listing th { position: sticky; top: 0; background: var(--panel); text-align: left; font-weight: 600; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.listing td { padding: 6px 12px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); white-space: nowrap; }
+.listing td.name { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.listing td.size { text-align: right; color: var(--muted); }
+.listing td.arc { color: var(--muted); }
+.listing .path { color: var(--muted); }
+.listing mark { background: var(--hit); color: var(--hit-ink); border-radius: 2px; padding: 0 1px; }
+.demo-foot { display: flex; justify-content: space-between; gap: 12px; padding: 9px 14px; border-top: 1px solid var(--line); font: 500 0.75rem/1.2 var(--font-mono); color: var(--muted); }
+
+/* Bölümler */
+section.block { padding-block: 64px; border-top: 1px solid var(--line); }
+.block-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-bottom: 28px; max-width: 46em; }
+.block-head h2 { font-size: var(--step-2); }
+.block-head p { color: var(--muted); }
+
+/* Ekran görüntüleri */
+.shots { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
+.shots figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.shots .side { display: grid; gap: 16px; }
+.shots img { display: block; width: 100%; height: auto; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.shots figcaption { font-size: var(--step--1); color: var(--muted); }
+
+/* Özellikler: teknik föy gibi iki sütun */
+.specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.spec { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 14px; padding-block: 16px; border-bottom: 1px solid var(--line); }
+.spec dt { font: 700 var(--step-0)/1.35 var(--font-display); }
+.spec dd { margin: 0; color: var(--muted); }
+.spec dd code, .how code { font-family: var(--font-mono); font-size: 0.88em; color: var(--ink); background: color-mix(in srgb, var(--hit) 35%, transparent); padding: 1px 4px; border-radius: 4px; }
+
+/* Kurulum */
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: transparent; color: var(--muted); font: 600 var(--step-0)/1 var(--font-body); padding: 12px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab-panel { padding-top: 20px; display: grid; gap: 12px; max-width: 52em; }
+.code { position: relative; background: var(--code-bg); color: var(--code-ink); border-radius: var(--radius); overflow-x: auto; }
+.code pre { margin: 0; padding: 16px 92px 16px 16px; font: 400 0.88rem/1.6 var(--font-mono); white-space: pre; }
+.code .prompt { color: var(--code-muted); user-select: none; }
+.code .copy { position: absolute; top: 10px; right: 10px; border: 1px solid color-mix(in srgb, var(--code-ink) 25%, transparent); background: var(--code-bg); box-shadow: -14px 0 12px var(--code-bg); color: var(--code-ink); font: 600 0.75rem/1 var(--font-mono); padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+.tab-panel .note { color: var(--muted); font-size: var(--step--1); }
+
+/* Nasıl hızlı */
+.how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.how article { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.how .fig { font: 700 var(--step-2)/1 var(--font-display); color: var(--accent); }
+.how .fig small { font: 500 var(--step--1)/1.3 var(--font-mono); color: var(--muted); display: block; margin-top: 6px; }
+.how h3 { font-size: var(--step-1); }
+.how p { color: var(--muted); font-size: 0.95rem; }
+.stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.stack span { font: 500 0.78rem/1 var(--font-mono); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; color: var(--muted); }
+
+footer { border-top: 1px solid var(--line); }
+footer .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; justify-content: space-between; padding-block: 28px; color: var(--muted); font-size: var(--step--1); }
+footer .credit { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); }
+footer .credit img { width: 24px; height: 24px; }
+footer .credit strong { font-weight: 600; }
+
+@media (max-width: 900px) {
+  .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-block: 36px; }
+  .shots { grid-template-columns: minmax(0, 1fr); }
+  .specs { grid-template-columns: minmax(0, 1fr); }
+  .how { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .top nav a.link { display: none; }
+  .spec { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .listing th.arc, .listing td.arc { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn { transition: transform 0.15s ease; }
+  .btn:hover { transform: translateY(-1px); }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="images/logo-arsiv.svg" alt="">Arşiv Ara</a>
+    <nav aria-label="Sayfa">
+      <a class="link" href="#features" data-i18n="nav.features">Özellikler</a>
+      <a class="link" href="#install" data-i18n="nav.install">Kurulum</a>
+      <a class="link" href="https://github.com/YOUR_GITHUB_USER/ArsivAra">GitHub</a>
+      <div class="langs" role="group" aria-label="Dil / Language">
+        <button type="button" data-lang="tr">TR</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="de">DE</button>
+        <button type="button" data-lang="es">ES</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow" data-i18n="hero.eyebrow">Windows · açık kaynak · ücretsiz</p>
+        <h1 data-i18n-html="hero.title">Arşivleri <em>açmadan</em> içinde ara.</h1>
+        <p class="lede" data-i18n="hero.lede">ZIP, RAR, 7z ve TAR dosyalarını pencereye bırakın, birkaç harf yazın. İçlerindeki her dosya adı milisaniyeler içinde listelenir; çift tıklayınca sadece o dosya açılır.</p>
+        <div class="ctas">
+          <a class="btn primary" href="https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest/download/ArsivAra.exe"><span data-i18n="hero.download">Windows için indir</span> <small>.exe · 61 MB</small></a>
+          <a class="btn" href="https://github.com/YOUR_GITHUB_USER/ArsivAra" data-i18n="hero.source">Kaynak kodu</a>
+        </div>
+        <p class="facts"><span data-i18n="hero.f1">Kurulum gerektirmez</span><span data-i18n="hero.f2">Tamamen çevrimdışı</span><span>MIT</span></p>
+      </div>
+
+      <div class="demo" aria-label="Canlı arama örneği">
+        <div class="demo-bar"><img src="images/logo-arsiv.svg" alt=""><span data-i18n="demo.title">Örnek: 4 arşiv, 36 dosya</span></div>
+        <div class="demo-search">
+          <label for="demo-q" data-i18n="demo.label">Arşivlerin içinde ara</label>
+          <input id="demo-q" type="search" autocomplete="off" spellcheck="false" placeholder="sirket, fatura 2024, ext:pdf…">
+        </div>
+        <div class="chips" aria-label="Örnek sorgular">
+          <button type="button" data-q="sirket">sirket</button>
+          <button type="button" data-q="ISTANBUL">ISTANBUL</button>
+          <button type="button" data-q="fatura 2024">fatura 2024</button>
+          <button type="button" data-q="ext:dwg;step">ext:dwg;step</button>
+          <button type="button" data-q="kilavuz">kilavuz</button>
+        </div>
+        <div class="listing-scroll">
+          <table class="listing">
+            <thead><tr><th data-i18n="demo.name">Ad</th><th class="size" data-i18n="demo.size">Boyut</th><th class="arc" data-i18n="demo.archive">Arşiv</th></tr></thead>
+            <tbody id="demo-rows"></tbody>
+          </table>
+        </div>
+        <div class="demo-foot"><span id="demo-count"></span><span data-i18n="demo.hint">Büyük/küçük harf ve aksan duyarsız</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="screens">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow" data-i18n="shots.eyebrow">Ekran görüntüleri</p>
+        <h2 data-i18n="shots.title">Liste ya da kareler, Ctrl + tekerlekle aralarında geçiş</h2>
+      </div>
+      <div class="shots">
+        <figure>
+          <img src="images/grid.png" width="1180" height="720" alt="Fotoğraf küçük resimleri ve Windows dosya simgeleriyle kareli görünüm" loading="lazy">
+          <figcaption data-i18n="shots.grid">Kareli görünüm: fotoğrafların kendisi, diğer dosyalarda Windows'taki simgeleri.</figcaption>
+        </figure>
+        <div class="side">
+          <figure>
+            <img src="images/search.png" width="1180" height="720" alt="'sirket' araması iki arşivde 'Şirket Raporu 2023.pdf' buluyor" loading="lazy">
+            <figcaption data-i18n="shots.search">"sirket" yazınca iki farklı arşivdeki "Şirket Raporu" bulunur.</figcaption>
+          </figure>
+          <figure>
+            <img src="images/empty.png" width="1180" height="720" alt="Arşivleri sürükleyip bırakma ekranı" loading="lazy">
+            <figcaption data-i18n="shots.empty">İlk açılış: arşivleri ya da klasörleri pencereye bırakın.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="features">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow" data-i18n="feat.eyebrow">Özellikler</p>
+        <h2 data-i18n="feat.title">Everything'in dosya adlarında yaptığını, arşivlerin içinde yapar</h2>
+      </div>
+      <dl class="specs">
+        <div class="spec"><dt data-i18n="feat.drop.t">Sürükle-bırak</dt><dd data-i18n="feat.drop.d">Arşivleri ya da klasörleri pencereye veya exe'nin üzerine bırakın. Liste bir sonraki açılışta yerinde durur.</dd></div>
+        <div class="spec"><dt data-i18n="feat.speed.t">Anında arama</dt><dd data-i18n="feat.speed.d">1 milyon dosya adında arama 2–20 ms sürer. Her tuşta sonuçlar güncellenir.</dd></div>
+        <div class="spec"><dt data-i18n="feat.tr.t">Türkçe duyarlı</dt><dd data-i18n-html="feat.tr.d"><code>sirket</code> yazınca <code>Şirket</code>, <code>istanbul</code> yazınca <code>İSTANBUL</code> bulunur. DOS (CP857) adlı eski ZIP'ler doğru okunur.</dd></div>
+        <div class="spec"><dt data-i18n="feat.filter.t">Filtreler</dt><dd data-i18n-html="feat.filter.d"><code>ext:pdf;docx</code>, <code>arsiv:2025</code>, <code>klasor:</code>, <code>dosya:</code>. Birden fazla kelime VE ile birleşir.</dd></div>
+        <div class="spec"><dt data-i18n="feat.view.t">Simgeler ve küçük resimler</dt><dd data-i18n="feat.view.d">Her dosya Windows'taki kendi simgesiyle görünür. Kareli görünümde fotoğrafların kendisi çıkar; Ctrl + tekerlek 16'dan 256 px'e büyütür.</dd></div>
+        <div class="spec"><dt data-i18n="feat.open.t">Tek tıkla aç</dt><dd data-i18n="feat.open.d">Çift tıklayınca arşivin tamamı değil, sadece o dosya geçici klasöre çıkarılıp açılır.</dd></div>
+        <div class="spec"><dt data-i18n="feat.portable.t">Taşınabilir</dt><dd data-i18n="feat.portable.d">Tek bir exe; kurulum ve .NET gerekmez. Ayarlar USB bellekte exe'nin yanında taşınır.</dd></div>
+        <div class="spec"><dt data-i18n="feat.private.t">Gizli</dt><dd data-i18n="feat.private.d">İnternete hiç bağlanmaz. Arşivleriniz ve listeleri bilgisayarınızda kalır.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="block" id="install">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow" data-i18n="inst.eyebrow">Kurulum</p>
+        <h2 data-i18n="inst.title">Üç yoldan biriyle, bir dakikada</h2>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Kurulum yöntemi">
+        <button type="button" role="tab" id="tab-ps" aria-controls="panel-ps" aria-selected="true">PowerShell</button>
+        <button type="button" role="tab" id="tab-winget" aria-controls="panel-winget" aria-selected="false">winget</button>
+        <button type="button" role="tab" id="tab-exe" aria-controls="panel-exe" aria-selected="false" data-i18n="inst.manual">Elle indir</button>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="panel-ps" aria-labelledby="tab-ps">
+        <div class="code"><pre><span class="prompt">PS&gt; </span><span class="cmd">irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex</span></pre><button type="button" class="copy" data-i18n="copy">Kopyala</button></div>
+        <p class="note" data-i18n="inst.ps.note">Son sürümü indirir, SHA256 ile doğrular, %LOCALAPPDATA%\Programs\ArsivAra içine koyar ve Başlat menüsüne kısayol ekler. Yönetici yetkisi gerekmez.</p>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="panel-winget" aria-labelledby="tab-winget" hidden>
+        <div class="code"><pre><span class="prompt">PS&gt; </span><span class="cmd">winget install YOUR_GITHUB_USER.ArsivAra</span></pre><button type="button" class="copy" data-i18n="copy">Kopyala</button></div>
+        <p class="note" data-i18n="inst.winget.note">Windows'un kendi paket yöneticisiyle kurar ve günceller: winget upgrade YOUR_GITHUB_USER.ArsivAra</p>
+      </div>
+      <div class="tab-panel" role="tabpanel" id="panel-exe" aria-labelledby="tab-exe" hidden>
+        <p><a class="btn primary" href="https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest/download/ArsivAra.exe"><span data-i18n="hero.download">Windows için indir</span> <small>ArsivAra.exe</small></a></p>
+        <p class="note" data-i18n="inst.exe.note">İndirip çift tıklayın. USB belleğe kopyalayıp başka bilgisayarlarda da açabilirsiniz. Windows 10/11, 64 bit.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="how">
+    <div class="wrap">
+      <div class="block-head">
+        <p class="eyebrow" data-i18n="how.eyebrow">Neden hızlı</p>
+        <h2 data-i18n="how.title">Arşivin verisine değil, içindekiler listesine bakar</h2>
+      </div>
+      <div class="how">
+        <article>
+          <p class="fig">ZIP <small data-i18n="how.zip.k">merkezi dizin</small></p>
+          <h3 data-i18n="how.zip.t">Sadece sondaki dizin okunur</h3>
+          <p data-i18n="how.zip.d">ZIP'in dosya listesi dosyanın sonunda tek blokta durur. Arşiv Ara o bloğu okur, sıkıştırılmış veriye hiç dokunmaz.</p>
+        </article>
+        <article>
+          <p class="fig">RAR5 <small>Quick Open</small></p>
+          <h3 data-i18n="how.rar.t">Dakikalar yerine saniyeler</h3>
+          <p data-i18n-html="how.rar.d">RAR her dosyanın başlığını verisinin önüne yazar; listelemek normalde dosya başına bir disk atlamasıdır. WinRAR bu başlıkların kopyasını arşivin sonuna da yazar. Arşiv Ara bu bloğu tek seferde okur ve her başlığı <code>CRC32</code> ile doğrular.</p>
+        </article>
+        <article>
+          <p class="fig">2–20 ms <small data-i18n="how.search.k">1 milyon dosya adında</small></p>
+          <h3 data-i18n="how.search.t">Bellekte tek tampon</h3>
+          <p data-i18n-html="how.search.d">Tüm yollar küçük harfe çevrilip aksanları atılarak tek bir UTF-8 tampona yazılır; tampon vektörize <code>IndexOf</code> ile paralel taranır.</p>
+        </article>
+      </div>
+      <div class="stack" aria-label="Kullanılan teknolojiler">
+        <span>C# 13 · .NET 9</span><span>WPF · Fluent</span><span>RAR5 / ZIP binary parsing</span><span>SIMD search</span><span>Win32 shell interop</span><span>SharpCompress</span><span>GitHub Actions</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span data-i18n="foot.license">MIT lisansı ile açık kaynak.</span>
+    <span class="credit"><img src="images/logo-arsiv.svg" alt=""><span>Created By <strong>MaledictusMaggot®</strong></span></span>
+    <span><a href="https://github.com/YOUR_GITHUB_USER/ArsivAra">github.com/YOUR_GITHUB_USER/ArsivAra</a></span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // ---- Çeviriler ----
+  const T = {
+    tr: {
+      "nav.features": "Özellikler", "nav.install": "Kurulum",
+      "hero.eyebrow": "Windows · açık kaynak · ücretsiz",
+      "hero.title": "Arşivleri <em>açmadan</em> içinde ara.",
+      "hero.lede": "ZIP, RAR, 7z ve TAR dosyalarını pencereye bırakın, birkaç harf yazın. İçlerindeki her dosya adı milisaniyeler içinde listelenir; çift tıklayınca sadece o dosya açılır.",
+      "hero.download": "Windows için indir", "hero.source": "Kaynak kodu",
+      "hero.f1": "Kurulum gerektirmez", "hero.f2": "Tamamen çevrimdışı",
+      "demo.title": "Örnek: 4 arşiv, 36 dosya", "demo.label": "Arşivlerin içinde ara",
+      "demo.name": "Ad", "demo.size": "Boyut", "demo.archive": "Arşiv",
+      "demo.hint": "Büyük/küçük harf ve aksan duyarsız", "demo.count": "{n} sonuç", "demo.none": "Eşleşen dosya yok",
+      "shots.eyebrow": "Ekran görüntüleri", "shots.title": "Liste ya da kareler, Ctrl + tekerlekle aralarında geçiş",
+      "shots.grid": "Kareli görünüm: fotoğrafların kendisi, diğer dosyalarda Windows'taki simgeleri.",
+      "shots.search": "\"sirket\" yazınca iki farklı arşivdeki \"Şirket Raporu\" bulunur.",
+      "shots.empty": "İlk açılış: arşivleri ya da klasörleri pencereye bırakın.",
+      "feat.eyebrow": "Özellikler", "feat.title": "Everything'in dosya adlarında yaptığını, arşivlerin içinde yapar",
+      "feat.drop.t": "Sürükle-bırak", "feat.drop.d": "Arşivleri ya da klasörleri pencereye veya exe'nin üzerine bırakın. Liste bir sonraki açılışta yerinde durur.",
+      "feat.speed.t": "Anında arama", "feat.speed.d": "1 milyon dosya adında arama 2–20 ms sürer. Her tuşta sonuçlar güncellenir.",
+      "feat.tr.t": "Türkçe duyarlı", "feat.tr.d": "<code>sirket</code> yazınca <code>Şirket</code>, <code>istanbul</code> yazınca <code>İSTANBUL</code> bulunur. DOS (CP857) adlı eski ZIP'ler doğru okunur.",
+      "feat.filter.t": "Filtreler", "feat.filter.d": "<code>ext:pdf;docx</code>, <code>arsiv:2025</code>, <code>klasor:</code>, <code>dosya:</code>. Birden fazla kelime VE ile birleşir.",
+      "feat.view.t": "Simgeler ve küçük resimler", "feat.view.d": "Her dosya Windows'taki kendi simgesiyle görünür. Kareli görünümde fotoğrafların kendisi çıkar; Ctrl + tekerlek 16'dan 256 px'e büyütür.",
+      "feat.open.t": "Tek tıkla aç", "feat.open.d": "Çift tıklayınca arşivin tamamı değil, sadece o dosya geçici klasöre çıkarılıp açılır.",
+      "feat.portable.t": "Taşınabilir", "feat.portable.d": "Tek bir exe; kurulum ve .NET gerekmez. Ayarlar USB bellekte exe'nin yanında taşınır.",
+      "feat.private.t": "Gizli", "feat.private.d": "İnternete hiç bağlanmaz. Arşivleriniz ve listeleri bilgisayarınızda kalır.",
+      "inst.eyebrow": "Kurulum", "inst.title": "Üç yoldan biriyle, bir dakikada", "inst.manual": "Elle indir",
+      "inst.ps.note": "Son sürümü indirir, SHA256 ile doğrular, %LOCALAPPDATA%\\Programs\\ArsivAra içine koyar ve Başlat menüsüne kısayol ekler. Yönetici yetkisi gerekmez.",
+      "inst.winget.note": "Windows'un kendi paket yöneticisiyle kurar ve günceller: winget upgrade YOUR_GITHUB_USER.ArsivAra",
+      "inst.exe.note": "İndirip çift tıklayın. USB belleğe kopyalayıp başka bilgisayarlarda da açabilirsiniz. Windows 10/11, 64 bit.",
+      "copy": "Kopyala", "copied": "Kopyalandı",
+      "how.eyebrow": "Neden hızlı", "how.title": "Arşivin verisine değil, içindekiler listesine bakar",
+      "how.zip.k": "merkezi dizin", "how.zip.t": "Sadece sondaki dizin okunur",
+      "how.zip.d": "ZIP'in dosya listesi dosyanın sonunda tek blokta durur. Arşiv Ara o bloğu okur, sıkıştırılmış veriye hiç dokunmaz.",
+      "how.rar.t": "Dakikalar yerine saniyeler",
+      "how.rar.d": "RAR her dosyanın başlığını verisinin önüne yazar; listelemek normalde dosya başına bir disk atlamasıdır. WinRAR bu başlıkların kopyasını arşivin sonuna da yazar. Arşiv Ara bu bloğu tek seferde okur ve her başlığı <code>CRC32</code> ile doğrular.",
+      "how.search.k": "1 milyon dosya adında", "how.search.t": "Bellekte tek tampon",
+      "how.search.d": "Tüm yollar küçük harfe çevrilip aksanları atılarak tek bir UTF-8 tampona yazılır; tampon vektörize <code>IndexOf</code> ile paralel taranır.",
+      "foot.license": "MIT lisansı ile açık kaynak."
+    },
+    en: {
+      "nav.features": "Features", "nav.install": "Install",
+      "hero.eyebrow": "Windows · open source · free",
+      "hero.title": "Search inside archives <em>without extracting</em> them.",
+      "hero.lede": "Drop ZIP, RAR, 7z and TAR files onto the window and type a few letters. Every file name inside them is listed in milliseconds; double-click opens just that one file.",
+      "hero.download": "Download for Windows", "hero.source": "Source code",
+      "hero.f1": "No installation", "hero.f2": "Fully offline",
+      "demo.title": "Example: 4 archives, 36 files", "demo.label": "Search inside archives",
+      "demo.name": "Name", "demo.size": "Size", "demo.archive": "Archive",
+      "demo.hint": "Case and accent insensitive", "demo.count": "{n} results", "demo.none": "No matching files",
+      "shots.eyebrow": "Screenshots", "shots.title": "List or grid, switch with Ctrl + mouse wheel",
+      "shots.grid": "Grid view: real photo thumbnails, Windows icons for everything else.",
+      "shots.search": "Typing \"sirket\" finds \"Şirket Raporu\" in two different archives.",
+      "shots.empty": "First start: drop archives or folders onto the window.",
+      "feat.eyebrow": "Features", "feat.title": "What Everything does for file names, done inside your archives",
+      "feat.drop.t": "Drag and drop", "feat.drop.d": "Drop archives or folders onto the window or onto the exe. The list is still there next time.",
+      "feat.speed.t": "Instant search", "feat.speed.d": "Searching 1 million file names takes 2–20 ms. Results update on every keystroke.",
+      "feat.tr.t": "Accent aware", "feat.tr.d": "<code>sirket</code> finds <code>Şirket</code>, <code>istanbul</code> finds <code>İSTANBUL</code>. Old ZIPs with DOS (CP857) file names are decoded correctly.",
+      "feat.filter.t": "Filters", "feat.filter.d": "<code>ext:pdf;docx</code>, <code>arsiv:2025</code>, <code>klasor:</code> (folders), <code>dosya:</code> (files). Several words are combined with AND.",
+      "feat.view.t": "Icons and thumbnails", "feat.view.d": "Every file shows its Windows icon. Grid view shows the photos themselves; Ctrl + wheel zooms from 16 to 256 px.",
+      "feat.open.t": "Open in one click", "feat.open.d": "Double-click extracts only that file, not the whole archive, and opens it.",
+      "feat.portable.t": "Portable", "feat.portable.d": "One exe, no installation, no .NET needed. Settings travel next to the exe on a USB stick.",
+      "feat.private.t": "Private", "feat.private.d": "It never connects to the internet. Your archives and their contents stay on your computer.",
+      "inst.eyebrow": "Install", "inst.title": "Pick one of three ways, done in a minute", "inst.manual": "Manual download",
+      "inst.ps.note": "Downloads the latest release, verifies its SHA256, places it in %LOCALAPPDATA%\\Programs\\ArsivAra and adds a Start menu shortcut. No admin rights needed.",
+      "inst.winget.note": "Installs and updates with the Windows package manager: winget upgrade YOUR_GITHUB_USER.ArsivAra",
+      "inst.exe.note": "Download and double-click. Copy it to a USB stick to use it on other computers too. Windows 10/11, 64-bit.",
+      "copy": "Copy", "copied": "Copied",
+      "how.eyebrow": "Why it is fast", "how.title": "It reads the table of contents, not the data",
+      "how.zip.k": "central directory", "how.zip.t": "Only the directory at the end is read",
+      "how.zip.d": "A ZIP keeps its file list in one block at the end of the file. Arşiv Ara reads that block and never touches the compressed data.",
+      "how.rar.t": "Seconds instead of minutes",
+      "how.rar.d": "RAR writes each file header in front of its data, so listing normally costs one disk seek per file. WinRAR also stores a copy of those headers at the end; Arşiv Ara reads that block in one go and checks every header with <code>CRC32</code>.",
+      "how.search.k": "across 1 million file names", "how.search.t": "One buffer in memory",
+      "how.search.d": "Every path is lower-cased and stripped of accents into a single UTF-8 buffer, scanned in parallel with vectorized <code>IndexOf</code>.",
+      "foot.license": "Open source under the MIT license."
+    },
+    de: {
+      "nav.features": "Funktionen", "nav.install": "Installation",
+      "hero.eyebrow": "Windows · Open Source · kostenlos",
+      "hero.title": "In Archiven suchen, <em>ohne sie zu entpacken</em>.",
+      "hero.lede": "ZIP-, RAR-, 7z- und TAR-Dateien ins Fenster ziehen und ein paar Buchstaben tippen. Jeder Dateiname darin erscheint in Millisekunden; ein Doppelklick öffnet nur diese eine Datei.",
+      "hero.download": "Für Windows herunterladen", "hero.source": "Quellcode",
+      "hero.f1": "Keine Installation", "hero.f2": "Komplett offline",
+      "demo.title": "Beispiel: 4 Archive, 36 Dateien", "demo.label": "In Archiven suchen",
+      "demo.name": "Name", "demo.size": "Größe", "demo.archive": "Archiv",
+      "demo.hint": "Ignoriert Groß-/Kleinschreibung und Akzente", "demo.count": "{n} Treffer", "demo.none": "Keine passenden Dateien",
+      "shots.eyebrow": "Bildschirmfotos", "shots.title": "Liste oder Kacheln, umschalten mit Strg + Mausrad",
+      "shots.grid": "Kachelansicht: echte Foto-Vorschaubilder, Windows-Symbole für alles andere.",
+      "shots.search": "„sirket“ findet „Şirket Raporu“ in zwei verschiedenen Archiven.",
+      "shots.empty": "Erster Start: Archive oder Ordner ins Fenster ziehen.",
+      "feat.eyebrow": "Funktionen", "feat.title": "Was Everything für Dateinamen tut, innerhalb Ihrer Archive",
+      "feat.drop.t": "Drag & Drop", "feat.drop.d": "Archive oder Ordner ins Fenster oder auf die exe ziehen. Die Liste bleibt beim nächsten Start erhalten.",
+      "feat.speed.t": "Sofortsuche", "feat.speed.d": "1 Million Dateinamen werden in 2–20 ms durchsucht. Jeder Tastendruck aktualisiert die Treffer.",
+      "feat.tr.t": "Akzent-tolerant", "feat.tr.d": "<code>sirket</code> findet <code>Şirket</code>, <code>istanbul</code> findet <code>İSTANBUL</code>. Alte ZIPs mit DOS-Namen (CP857) werden richtig dekodiert.",
+      "feat.filter.t": "Filter", "feat.filter.d": "<code>ext:pdf;docx</code>, <code>arsiv:2025</code>, <code>klasor:</code> (Ordner), <code>dosya:</code> (Dateien). Mehrere Wörter werden mit UND verknüpft.",
+      "feat.view.t": "Symbole und Vorschaubilder", "feat.view.d": "Jede Datei zeigt ihr Windows-Symbol. Die Kachelansicht zeigt die Fotos selbst; Strg + Mausrad zoomt von 16 bis 256 px.",
+      "feat.open.t": "Mit einem Klick öffnen", "feat.open.d": "Ein Doppelklick entpackt nur diese Datei, nicht das ganze Archiv, und öffnet sie.",
+      "feat.portable.t": "Portabel", "feat.portable.d": "Eine einzige exe, keine Installation, kein .NET. Einstellungen liegen auf dem USB-Stick neben der exe.",
+      "feat.private.t": "Privat", "feat.private.d": "Keine Internetverbindung. Ihre Archive und deren Inhalt bleiben auf Ihrem Rechner.",
+      "inst.eyebrow": "Installation", "inst.title": "Einer von drei Wegen, in einer Minute erledigt", "inst.manual": "Manuell laden",
+      "inst.ps.note": "Lädt die neueste Version, prüft die SHA256-Prüfsumme, legt sie in %LOCALAPPDATA%\\Programs\\ArsivAra ab und erstellt eine Startmenü-Verknüpfung. Keine Administratorrechte nötig.",
+      "inst.winget.note": "Installiert und aktualisiert über den Windows-Paketmanager: winget upgrade YOUR_GITHUB_USER.ArsivAra",
+      "inst.exe.note": "Herunterladen und doppelklicken. Auf einen USB-Stick kopiert läuft sie auch auf anderen Rechnern. Windows 10/11, 64 Bit.",
+      "copy": "Kopieren", "copied": "Kopiert",
+      "how.eyebrow": "Warum es schnell ist", "how.title": "Gelesen wird das Inhaltsverzeichnis, nicht die Daten",
+      "how.zip.k": "zentrales Verzeichnis", "how.zip.t": "Nur das Verzeichnis am Ende",
+      "how.zip.d": "Ein ZIP speichert seine Dateiliste in einem Block am Dateiende. Arşiv Ara liest diesen Block und berührt die komprimierten Daten nicht.",
+      "how.rar.t": "Sekunden statt Minuten",
+      "how.rar.d": "RAR schreibt jeden Dateikopf vor seine Daten; das Auflisten kostet normalerweise einen Festplattensprung pro Datei. WinRAR legt zusätzlich eine Kopie dieser Köpfe ans Ende. Arşiv Ara liest diesen Block auf einmal und prüft jeden Kopf per <code>CRC32</code>.",
+      "how.search.k": "über 1 Million Dateinamen", "how.search.t": "Ein Puffer im Speicher",
+      "how.search.d": "Alle Pfade werden normalisiert in einen UTF-8-Puffer geschrieben und parallel mit vektorisiertem <code>IndexOf</code> durchsucht.",
+      "foot.license": "Open Source unter der MIT-Lizenz."
+    },
+    es: {
+      "nav.features": "Funciones", "nav.install": "Instalación",
+      "hero.eyebrow": "Windows · código abierto · gratis",
+      "hero.title": "Busca dentro de archivos comprimidos <em>sin extraerlos</em>.",
+      "hero.lede": "Arrastra archivos ZIP, RAR, 7z y TAR a la ventana y escribe unas letras. Cada nombre de archivo que contienen aparece en milisegundos; con doble clic se abre solo ese archivo.",
+      "hero.download": "Descargar para Windows", "hero.source": "Código fuente",
+      "hero.f1": "Sin instalación", "hero.f2": "Totalmente sin conexión",
+      "demo.title": "Ejemplo: 4 archivos comprimidos, 36 archivos", "demo.label": "Buscar dentro de los archivos",
+      "demo.name": "Nombre", "demo.size": "Tamaño", "demo.archive": "Archivo",
+      "demo.hint": "Ignora mayúsculas y acentos", "demo.count": "{n} resultados", "demo.none": "Ningún archivo coincide",
+      "shots.eyebrow": "Capturas", "shots.title": "Lista o cuadrícula, cambia con Ctrl + rueda",
+      "shots.grid": "Vista de cuadrícula: miniaturas reales de fotos e iconos de Windows para lo demás.",
+      "shots.search": "Escribir \"sirket\" encuentra \"Şirket Raporu\" en dos archivos distintos.",
+      "shots.empty": "Primer inicio: arrastra archivos o carpetas a la ventana.",
+      "feat.eyebrow": "Funciones", "feat.title": "Lo que Everything hace con los nombres de archivo, dentro de tus archivos comprimidos",
+      "feat.drop.t": "Arrastrar y soltar", "feat.drop.d": "Suelta archivos o carpetas en la ventana o sobre el exe. La lista sigue ahí la próxima vez.",
+      "feat.speed.t": "Búsqueda instantánea", "feat.speed.d": "Buscar en 1 millón de nombres tarda 2–20 ms. Los resultados cambian con cada tecla.",
+      "feat.tr.t": "Sin importar acentos", "feat.tr.d": "<code>sirket</code> encuentra <code>Şirket</code>, <code>istanbul</code> encuentra <code>İSTANBUL</code>. Los ZIP antiguos con nombres DOS (CP857) se leen bien.",
+      "feat.filter.t": "Filtros", "feat.filter.d": "<code>ext:pdf;docx</code>, <code>arsiv:2025</code>, <code>klasor:</code> (carpetas), <code>dosya:</code> (archivos). Varias palabras se combinan con Y.",
+      "feat.view.t": "Iconos y miniaturas", "feat.view.d": "Cada archivo muestra su icono de Windows. La cuadrícula muestra las fotos; Ctrl + rueda hace zoom de 16 a 256 px.",
+      "feat.open.t": "Abrir con un clic", "feat.open.d": "El doble clic extrae solo ese archivo, no todo el comprimido, y lo abre.",
+      "feat.portable.t": "Portátil", "feat.portable.d": "Un solo exe, sin instalación ni .NET. La configuración viaja junto al exe en una memoria USB.",
+      "feat.private.t": "Privado", "feat.private.d": "No se conecta a internet. Tus archivos y su contenido se quedan en tu equipo.",
+      "inst.eyebrow": "Instalación", "inst.title": "Elige una de tres formas, listo en un minuto", "inst.manual": "Descarga manual",
+      "inst.ps.note": "Descarga la última versión, verifica su SHA256, la coloca en %LOCALAPPDATA%\\Programs\\ArsivAra y crea un acceso directo en el menú Inicio. No necesita permisos de administrador.",
+      "inst.winget.note": "Instala y actualiza con el gestor de paquetes de Windows: winget upgrade YOUR_GITHUB_USER.ArsivAra",
+      "inst.exe.note": "Descarga y haz doble clic. Cópialo a una memoria USB para usarlo en otros equipos. Windows 10/11, 64 bits.",
+      "copy": "Copiar", "copied": "Copiado",
+      "how.eyebrow": "Por qué es rápido", "how.title": "Lee el índice, no los datos",
+      "how.zip.k": "directorio central", "how.zip.t": "Solo se lee el directorio final",
+      "how.zip.d": "Un ZIP guarda su lista de archivos en un bloque al final. Arşiv Ara lee ese bloque y nunca toca los datos comprimidos.",
+      "how.rar.t": "Segundos en lugar de minutos",
+      "how.rar.d": "RAR escribe la cabecera de cada archivo delante de sus datos, así que listar cuesta un salto de disco por archivo. WinRAR también guarda una copia de esas cabeceras al final; Arşiv Ara la lee de una vez y comprueba cada cabecera con <code>CRC32</code>.",
+      "how.search.k": "en 1 millón de nombres", "how.search.t": "Un solo búfer en memoria",
+      "how.search.d": "Todas las rutas se pasan a minúsculas sin acentos en un único búfer UTF-8, recorrido en paralelo con <code>IndexOf</code> vectorizado.",
+      "foot.license": "Código abierto con licencia MIT."
+    }
+  };
+
+  // ---- Dil ----
+  const LANGS = ["tr", "en", "de", "es"];
+  let lang = "en";
+  const fromHash = location.hash.slice(1);
+  let stored = null;
+  try { stored = localStorage.getItem("arsivara-lang"); } catch (e) {}
+  const nav = (navigator.language || "en").slice(0, 2).toLowerCase();
+  lang = LANGS.includes(fromHash) ? fromHash : LANGS.includes(stored) ? stored : LANGS.includes(nav) ? nav : "en";
+
+  function t(key) { return (T[lang] && T[lang][key]) ?? T.en[key] ?? key; }
+
+  function applyLang(l) {
+    lang = l;
+    document.documentElement.lang = l;
+    document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.querySelectorAll(".langs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === l)));
+    try { localStorage.setItem("arsivara-lang", l); } catch (e) {}
+    render();
+  }
+  document.querySelectorAll(".langs button").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
+
+  // ---- Canlı demo: programdaki eşleştirmenin aynısı ----
+  // Her karakter tek karaktere katlanır (uzunluk korunur), böylece vurgu aralıkları orijinal metne denk gelir.
+  function foldChar(c) {
+    let d = c.normalize("NFD")[0] || c;
+    d = d.toLowerCase()[0] || d;
+    if (d === "ı") d = "i";
+    if (d === "\\") d = "/";
+    return d;
+  }
+  const fold = s => Array.from(s, foldChar).join("");
+
+  const A = { y: "Yedek_2025-12.rar", p: "Proje_Arsivi.zip", m: "Muhasebe_2024.7z", g: "Gezi_Fotograflari.zip" };
+  const FILES = [
+    ["Belgeler/Şirket Raporu 2023.pdf", 1.2e6, A.y], ["Belgeler/Şirket Sözleşmesi.docx", 84e3, A.y],
+    ["Belgeler/Personel Listesi.xlsx", 46e3, A.y], ["Masaüstü/Toplantı Notları.txt", 3e3, A.y],
+    ["Masaüstü/Kurulum Kılavuzu.pdf", 2.4e6, A.y], ["İndirilenler/Fiyat Listesi 2025.xlsx", 210e3, A.y],
+    ["İndirilenler/Teklif_ACME_2025.pdf", 640e3, A.y], ["Masaüstü/Ekran Görüntüsü 2025-11-03.png", 380e3, A.y],
+    ["Proje/Çizimler/Montaj.dwg", 5.8e6, A.p], ["Proje/Çizimler/Parça-01.step", 3.1e6, A.p],
+    ["Proje/Çizimler/Parça-02.step", 2.9e6, A.p], ["Proje/Kaynak/Program.cs", 12e3, A.p],
+    ["Proje/Kaynak/Ayarlar.json", 2e3, A.p], ["Proje/Belgeler/Kullanım Kılavuzu.docx", 1.1e6, A.p],
+    ["Proje/Belgeler/Test Raporu.pdf", 920e3, A.p], ["Proje/Sunum/Müşteri Sunumu.pptx", 7.4e6, A.p],
+    ["Faturalar/2024/Ocak/fatura_00123.pdf", 96e3, A.m], ["Faturalar/2024/Şubat/fatura_00157.pdf", 101e3, A.m],
+    ["Faturalar/2024/Mart/fatura_00201.pdf", 88e3, A.m], ["Faturalar/2023/Aralık/fatura_00987.pdf", 92e3, A.m],
+    ["Bordrolar/2024-06 Bordro.xlsx", 64e3, A.m], ["Bordrolar/2024-07 Bordro.xlsx", 66e3, A.m],
+    ["Banka/Hesap Özeti Ağustos 2024.pdf", 140e3, A.m], ["Banka/Hesap Özeti Eylül 2024.pdf", 152e3, A.m],
+    ["İSTANBUL/Galata Kulesi.jpg", 4.2e6, A.g], ["İSTANBUL/Kız Kulesi gün batımı.jpg", 3.8e6, A.g],
+    ["İSTANBUL/Boğaz turu.mp4", 186e6, A.g], ["Kapadokya/Balonlar.jpg", 5.1e6, A.g],
+    ["Kapadokya/Göreme vadisi.jpg", 4.6e6, A.g], ["Kapadokya/Uçhisar.png", 2.2e6, A.g],
+    ["Ege/Çeşme sahil.jpg", 3.3e6, A.g], ["Ege/Şirince köyü.jpg", 3.9e6, A.g],
+    ["Ege/Efes Antik Kenti.heic", 2.7e6, A.g], ["Notlar/okubeni.txt", 1e3, A.p],
+    ["Yedekler/eski_proje.zip", 48e6, A.p], ["Masaüstü/Kısayollar/", 0, A.y]
+  ].map(([path, size, arc]) => ({ path, size, arc, folded: fold(path) }));
+
+  const fmt = n => n === 0 ? "" : n < 1024 ? n + " B" : n < 1048576 ? Math.round(n / 1024) + " KB" : (n / 1048576).toFixed(1).replace(".", lang === "en" ? "." : ",") + " MB";
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const input = document.getElementById("demo-q");
+  const rows = document.getElementById("demo-rows");
+  const count = document.getElementById("demo-count");
+
+  function parse(q) {
+    const words = [], exts = [];
+    for (const raw of q.split(/\s+/).filter(Boolean)) {
+      const f = fold(raw);
+      if (f.startsWith("ext:")) f.slice(4).split(/[;,]/).filter(Boolean).forEach(e => exts.push("." + e.replace(/^\./, "")));
+      else words.push(f);
+    }
+    return { words, exts };
+  }
+
+  function highlight(text, folded, words) {
+    const marks = new Array(text.length).fill(false);
+    for (const w of words) {
+      let i = folded.indexOf(w);
+      while (i >= 0) { for (let k = i; k < i + w.length; k++) marks[k] = true; i = folded.indexOf(w, i + w.length); }
+    }
+    let out = "", open = false;
+    for (let i = 0; i < text.length; i++) {
+      if (marks[i] && !open) { out += "<mark>"; open = true; }
+      if (!marks[i] && open) { out += "</mark>"; open = false; }
+      out += esc(text[i]);
+    }
+    return out + (open ? "</mark>" : "");
+  }
+
+  function render() {
+    const { words, exts } = parse(input.value);
+    const hits = FILES.filter(f =>
+      words.every(w => f.folded.includes(w)) &&
+      (exts.length === 0 || exts.some(e => f.folded.endsWith(e))));
+    rows.innerHTML = hits.map(f => {
+      const slash = f.path.replace(/\/$/, "").lastIndexOf("/");
+      const dir = slash >= 0 ? f.path.slice(0, slash + 1) : "";
+      const name = f.path.slice(dir.length);
+      return `<tr><td class="name" title="${esc(f.path)}"><span class="path">${highlight(dir, f.folded.slice(0, dir.length), words)}</span>${highlight(name, f.folded.slice(dir.length), words)}</td><td class="size">${fmt(f.size)}</td><td class="arc">${esc(f.arc)}</td></tr>`;
+    }).join("");
+    count.textContent = hits.length ? t("demo.count").replace("{n}", hits.length) : t("demo.none");
+  }
+  input.addEventListener("input", render);
+  document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => { stopTyping(); input.value = b.dataset.q; render(); input.focus(); }));
+
+  // Açılışta bir kez kendi kendine "sirket" yazar (hareket azaltma tercihinde direkt sonuç).
+  let typing = null;
+  function stopTyping() { if (typing) { clearInterval(typing); typing = null; } }
+  input.addEventListener("focus", stopTyping);
+  function autoType(text) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { input.value = text; render(); return; }
+    let i = 0;
+    typing = setInterval(() => {
+      input.value = text.slice(0, ++i); render();
+      if (i >= text.length) stopTyping();
+    }, 140);
+  }
+
+  // ---- Kurulum sekmeleri ve kopyalama ----
+  const tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(tab => tab.addEventListener("click", () => {
+    tabs.forEach(o => {
+      const on = o === tab;
+      o.setAttribute("aria-selected", String(on));
+      document.getElementById(o.getAttribute("aria-controls")).hidden = !on;
+    });
+  }));
+  document.querySelectorAll(".code .copy").forEach(btn => btn.addEventListener("click", () => {
+    const text = btn.parentElement.querySelector(".cmd").textContent;
+    const done = () => { btn.textContent = t("copied"); setTimeout(() => btn.textContent = t("copy"), 1600); };
+    const fallback = () => {
+      const r = document.createRange(); r.selectNodeContents(btn.parentElement.querySelector(".cmd"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+  }));
+
+  applyLang(lang);
+  setTimeout(() => autoType("sirket"), 700);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Derleme çıktıları
+bin/
+obj/
+publish/
+publish-*/
+*.user
+.vs/
+.idea/
+
+# Taşınabilir kullanımda exe'nin yanında oluşan veri klasörü
+ArsivAra-veri/

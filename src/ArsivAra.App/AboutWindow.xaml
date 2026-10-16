@@ -1,0 +1,24 @@
+<Window x:Class="ArsivAra.App.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Arşiv Ara hakkında" Icon="Assets/app.ico"
+        Width="400" SizeToContent="Height" ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13">
+    <StackPanel Margin="32,28,32,24">
+        <Image Source="Assets/logo.png" Width="112" Height="112" RenderOptions.BitmapScalingMode="HighQuality" />
+        <TextBlock Text="Arşiv Ara" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0" />
+        <TextBlock x:Name="VersionText" HorizontalAlignment="Center" Opacity="0.7" Margin="0,2,0,0" />
+        <TextBlock TextWrapping="Wrap" TextAlignment="Center" Margin="0,14,0,0">
+            ZIP, RAR, 7z ve TAR arşivlerinin içinde,<LineBreak />açmadan anında arama.
+        </TextBlock>
+        <TextBlock HorizontalAlignment="Center" FontSize="15" Margin="0,20,0,0">
+            <Run Text="Created By" /> <Run Text="MaledictusMaggot®" FontWeight="Bold" />
+        </TextBlock>
+        <TextBlock Text="MIT lisansı · SharpCompress (MIT) kullanır" HorizontalAlignment="Center"
+                   FontSize="12" Opacity="0.6" Margin="0,6,0,0" />
+        <!-- IsCancel: tıklayınca ya da Esc ile kapanır -->
+        <Button Content="Tamam" IsDefault="True" IsCancel="True" MinWidth="104" Padding="16,6"
+                HorizontalAlignment="Center" Margin="0,22,0,0" Style="{DynamicResource AccentButtonStyle}" />
+    </StackPanel>
+</Window>

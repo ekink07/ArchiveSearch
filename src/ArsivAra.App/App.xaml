@@ -1,0 +1,10 @@
+<Application x:Class="ArsivAra.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml"
+             ThemeMode="System">
+    <Application.Resources>
+        <!-- Kenar çubuğundaki arşiv kartları ve boş ekran için ortak ölçüler -->
+        <CornerRadius x:Key="CardRadius">8</CornerRadius>
+    </Application.Resources>
+</Application>

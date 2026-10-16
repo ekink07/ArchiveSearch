@@ -1,0 +1,41 @@
+# v1.2.3 gibi bir etiket gönderildiğinde taşınabilir exe'yi derler ve GitHub sürümü olarak yayınlar.
+#   git tag v1.0.0
+#   git push origin v1.0.0
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Taşınabilir exe derle
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none `
+            -p:Version=$version -o out
+          $hash = (Get-FileHash out/ArsivAra.exe -Algorithm SHA256).Hash
+          "$hash  ArsivAra.exe" | Set-Content out/ArsivAra.exe.sha256 -Encoding ascii
+          "SHA256: $hash" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Sürümü yayınla
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/ArsivAra.exe
+            out/ArsivAra.exe.sha256
+          generate_release_notes: true

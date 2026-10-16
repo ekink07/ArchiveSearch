@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ArsivAra.Core\ArsivAra.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ArsivAra</AssemblyName>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- Sürüm, ürün adı ve yapımcı bilgisi: ../../Directory.Build.props -->
+    <Title>Arşiv Ara</Title>
+    <AssemblyTitle>Arşiv Ara</AssemblyTitle>
+    <Description>ZIP, RAR, 7z ve TAR arşivlerinin içinde, açmadan anında arama.</Description>
+    <RootNamespace>ArsivAra.App</RootNamespace>
+    <!-- .NET 9'da Fluent (Windows 11) teması deneysel olarak işaretli -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pencere ve görev çubuğu ikonu için (exe ikonu ApplicationIcon'dan gelir) -->
+    <Resource Include="Assets\app.ico" />
+    <!-- Boş ekran ve Hakkında penceresindeki logo. İkisi de tools/make_icon.ps1 ile docs/images/logo-arsiv.svg'den üretilir. -->
+    <Resource Include="Assets\logo.png" />
+  </ItemGroup>
+
+</Project>
+
+
+

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+PackageIdentifier: VerloraStudios.ArsivAra
+PackageVersion: 1.1.0
+InstallerType: portable
+Commands:
+  - arsivara
+MinimumOSVersion: 10.0.17763.0
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/download/v1.1.0/ArsivAra.exe
+    # Sürüm yayınlandıktan sonra ArsivAra.exe.sha256 dosyasındaki değer:
+    InstallerSha256: REPLACE_WITH_X64_SHA256_FROM_RELEASE
+  - Architecture: arm64
+    InstallerUrl: https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/download/v1.1.0/ArsivAra-arm64.exe
+    # Sürüm yayınlandıktan sonra ArsivAra-arm64.exe.sha256 dosyasındaki değer:
+    InstallerSha256: REPLACE_WITH_ARM64_SHA256_FROM_RELEASE
+ManifestType: installer
+ManifestVersion: 1.9.0

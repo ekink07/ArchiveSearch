@@ -1,0 +1,43 @@
+# Her gönderimde ve çekme isteğinde derler, birim testlerini ve arayüz duman testini çalıştırır.
+name: CI
+
+on:
+  push:
+    branches: [main, gelistirme]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Derle
+        run: dotnet build ArsivAra.sln -c Release
+
+      - name: Birim testleri
+        run: dotnet test tests/ArsivAra.Core.Tests -c Release --no-build --logger "trx;LogFileName=sonuc.trx" --results-directory test-sonuclari
+
+      # Programı açıp UI Automation ile dener; barındırılan çalıştırıcıda masaüstü oturumu her zaman
+      # hazır olmayabildiği için sonucu derlemeyi düşürmez, ekran görüntüleri yapıt olarak eklenir.
+      - name: Arayüz duman testi
+        shell: pwsh
+        continue-on-error: true
+        run: ./tests/ui/ui-smoke.ps1 -Screenshots ui-ekran
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-sonuclari
+          path: |
+            test-sonuclari
+            ui-ekran
+          if-no-files-found: ignore

@@ -1,6 +1,14 @@
-# v1.2.3 gibi bir etiket gönderildiğinde taşınabilir exe'yi derler ve GitHub sürümü olarak yayınlar.
-#   git tag v1.0.0
-#   git push origin v1.0.0
+# v1.2.3 gibi bir etiket gönderildiğinde testleri çalıştırır, x64 ve ARM64 için taşınabilir exe derler,
+# sırlar tanımlıysa imzalar, GitHub sürümü olarak yayınlar ve winget güncellemesini gönderir.
+#   git tag v1.1.0
+#   git push origin v1.1.0
+#
+# İsteğe bağlı sırlar (Settings > Secrets and variables > Actions); tanımlı değillerse ilgili adım atlanır:
+#   İmzalama (Azure Trusted Signing, bkz. packaging/signing/README.md):
+#     AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+#     TRUSTED_SIGNING_ENDPOINT, TRUSTED_SIGNING_ACCOUNT, TRUSTED_SIGNING_PROFILE
+#   winget (paket winget-pkgs'e bir kez elle eklendikten sonra, bkz. packaging/winget/README.md):
+#     WINGET_TOKEN  (public_repo yetkili klasik GitHub token)
 name: Release
 
 on:
@@ -11,8 +19,28 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  test:
     runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Birim testleri
+        run: dotnet test tests/ArsivAra.Core.Tests -c Release
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            asset: ArsivAra.exe
+          - rid: win-arm64
+            asset: ArsivAra-arm64.exe
+    env:
+      SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -20,22 +48,67 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Taşınabilir exe derle
+      - name: Taşınabilir exe derle (${{ matrix.rid }})
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}'.TrimStart('v')
-          dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true `
+          dotnet publish src/ArsivAra.App -c Release -r ${{ matrix.rid }} --self-contained true `
             -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none `
             -p:Version=$version -o out
-          $hash = (Get-FileHash out/ArsivAra.exe -Algorithm SHA256).Hash
-          "$hash  ArsivAra.exe" | Set-Content out/ArsivAra.exe.sha256 -Encoding ascii
-          "SHA256: $hash" >> $env:GITHUB_STEP_SUMMARY
+          New-Item -ItemType Directory dist | Out-Null
+          Move-Item out/ArsivAra.exe dist/${{ matrix.asset }}
+
+      - name: İmzala (Azure Trusted Signing)
+        if: env.SIGNING == 'true'
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
+          files-folder: dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      # Özet imzadan sonra alınır: install.ps1 ve winget bu değeri doğrular.
+      - name: SHA256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/${{ matrix.asset }} -Algorithm SHA256).Hash
+          "$hash  ${{ matrix.asset }}" | Set-Content dist/${{ matrix.asset }}.sha256 -Encoding ascii
+          "${{ matrix.asset }}: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    env:
+      WINGET: ${{ secrets.WINGET_TOKEN != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
       - name: Sürümü yayınla
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            out/ArsivAra.exe
-            out/ArsivAra.exe.sha256
+          files: dist/*
           generate_release_notes: true
+
+      - name: winget güncellemesi gönder
+        if: env.WINGET == 'true'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: VerloraStudios.ArsivAra
+          installers-regex: '\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}

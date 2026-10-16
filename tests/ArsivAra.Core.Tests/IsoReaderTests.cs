@@ -20,8 +20,9 @@ public class IsoReaderTests
             using var ms = new MemoryStream();
             s.CopyTo(ms);
             Assert.Equal(content, ms.ToArray());
-            var local = new DateTime(f.MtimeUtcTicks, DateTimeKind.Utc).ToLocalTime();
-            Assert.Equal(new DateTime(2024, 6, 15, 10, 30, 0), local, TimeSpan.FromSeconds(2));
+            // The fixtures were stamped 10:30 on a UTC+3 machine; ISO 9660 and UDF store the offset, so this holds in any time zone.
+            var utc = new DateTime(f.MtimeUtcTicks, DateTimeKind.Utc);
+            Assert.Equal(new DateTime(2024, 6, 15, 7, 30, 0, DateTimeKind.Utc), utc, TimeSpan.FromSeconds(2));
         }
         Assert.True(byPath["Boş Klasör/"].IsDirectory);
         Assert.True(byPath["Fotoğraflar/İstanbul/"].IsDirectory);

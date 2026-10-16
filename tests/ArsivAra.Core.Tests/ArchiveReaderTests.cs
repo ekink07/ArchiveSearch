@@ -63,8 +63,8 @@ public class ArchiveReaderTests
     [Fact]
     public void Old_dos_zip_names_are_decoded_as_turkish()
     {
-        ArchiveReader.LegacyNameEncoding = NameEncoding.ForCodePage(857); // independent of the test machine's language
-        var rec = Fx.Read("zip-cp857.zip");
+        var rec = Fx.Read("zip-cp857.zip"); // decoded as CP857 on every machine, see TestSetup
+        Assert.Equal(857, ((NameEncoding)ArchiveReader.LegacyNameEncoding).Legacy.CodePage);
         Assert.Contains(rec.Entries, e => e.Path == "Belgeler/Şirket Raporu 2023.txt");
         Assert.Contains(rec.Entries, e => e.Path == "Fotoğraflar/İstanbul/kule.png");
     }

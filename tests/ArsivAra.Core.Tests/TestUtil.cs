@@ -4,10 +4,16 @@ namespace ArsivAra.Core.Tests;
 
 static class TestSetup
 {
-    /// <summary>Keeps tests from writing to the user's real data folder (log, passwords): set before AppPaths is first used.</summary>
+    /// <summary>
+    /// Keeps tests from writing to the user's real data folder (log, passwords): set before AppPaths is first used.
+    /// Old DOS ZIP names are decoded as CP857 (zip-cp857.zip was made on a Turkish system), whatever the machine's language.
+    /// </summary>
     [System.Runtime.CompilerServices.ModuleInitializer]
-    internal static void Init() =>
+    internal static void Init()
+    {
         Environment.SetEnvironmentVariable("ARSIVARA_DATA", Path.Combine(Path.GetTempPath(), "arsivara-test-veri"));
+        ArchiveReader.LegacyNameEncoding = NameEncoding.ForCodePage(857);
+    }
 }
 
 /// <summary>Sample archives produced by tools/make_test_fixtures.ps1 and the expected contents of the source tree.</summary>

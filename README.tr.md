@@ -125,7 +125,7 @@ Kenar çubuğunda bir arşive tıklarsanız arama yalnızca onun içinde yapıl�
 
 ## Kaynaktan derleme
 
-Windows'ta [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) gerekir.
+Windows'ta [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) gerekir (`winget install Microsoft.DotNet.SDK.10`); `global.json` onu seçer.
 
 ```powershell
 git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
@@ -151,8 +151,8 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `tools/` | Simgeler, ekran görüntüleri ve paylaşım kartı, test arşivleri, `YOUR_GITHUB_USER` yer tutucuları için `set-github-user.ps1` |
 
 Her gönderimde [CI iş akışı](.github/workflows/ci.yml) çalışır. `v1.1.0` gibi bir etiket gönderildiğinde testler çalışır, x64 ve ARM64 exe'leri derlenir,
-imzalama sırları tanımlıysa imzalanır ([packaging/signing](packaging/signing/README.md)), GitHub'da sürüm yayınlanır
-ve [winget](packaging/winget/README.md) güncellenir ([iş akışı](.github/workflows/release.yml)).
+imzalama sırları tanımlıysa imzalanır, GitHub'da sürüm yayınlanır
+ve winget güncellenir ([iş akışı](.github/workflows/release.yml)). Adım adım yayın, winget ve kod imzalama rehberi: [packaging/README.md](packaging/README.md).
 
 ## Sınırlar
 

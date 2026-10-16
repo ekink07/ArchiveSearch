@@ -20,200 +20,203 @@ internal static partial class IEntryExtensions
         return source;
     }
 
-    /// <summary>
-    /// Extract to specific directory, retaining filename
-    /// </summary>
-    internal static void WriteEntryToDirectory(this IEntry entry,
-        string destinationDirectory,
-        ExtractionOptions? options,
-        Action<string> write
-    )
+    extension(IEntry entry)
     {
-        options ??= new ExtractionOptions();
-        var fullDestinationDirectoryPath = DirectoryManagement.GetFullDestinationDirectoryPath(
-            destinationDirectory
-        );
-
-        WriteEntryToDirectoryCore(entry, fullDestinationDirectoryPath, options, write);
-    }
-
-    internal static void WriteEntryToDirectoryCore(this IEntry entry,
-        string fullDestinationDirectoryPath,
-        ExtractionOptions options,
-        Action<string>? write
-    )
-    {
-        if (entry.LinkTarget is not null && options.SymbolicLinkHandler is null)
+        /// <summary>
+        /// Extract to specific directory, retaining filename
+        /// </summary>
+        internal void WriteEntryToDirectory(
+            string destinationDirectory,
+            ExtractionOptions? options,
+            Action<string> write
+        )
         {
-            return;
-        }
-
-        var destinationFileName = GetEntryDestinationFileName(
-            entry,
-            fullDestinationDirectoryPath,
-            options
-        );
-
-        if (!entry.IsDirectory)
-        {
-            destinationFileName = Path.GetFullPath(destinationFileName);
-
-            DirectoryManagement.EnsurePathInDestinationDirectory(
-                destinationFileName,
-                fullDestinationDirectoryPath,
-                DirectoryManagement.WriteFileOutsideDestinationMessage
+            options ??= new ExtractionOptions();
+            var fullDestinationDirectoryPath = DirectoryManagement.GetFullDestinationDirectoryPath(
+                destinationDirectory
             );
 
-            DirectoryManagement.EnsureNoReparsePointInDestinationDirectory(
-                destinationFileName,
-                fullDestinationDirectoryPath
-            );
-
-            if (entry.LinkTarget is not null)
-            {
-                DirectoryManagement.EnsureLinkTargetInDestinationDirectory(
-                    destinationFileName,
-                    entry.LinkTarget,
-                    fullDestinationDirectoryPath
-                );
-            }
-
-            write?.Invoke(destinationFileName);
-        }
-        else if (options.ExtractFullPath)
-        {
-            destinationFileName = Path.GetFullPath(destinationFileName);
-
-            DirectoryManagement.EnsurePathInDestinationDirectory(
-                destinationFileName,
-                fullDestinationDirectoryPath,
-                DirectoryManagement.CreateDirectoryOutsideDestinationMessage
-            );
-
-            DirectoryManagement.CreateDirectory(
-                destinationFileName,
-                fullDestinationDirectoryPath
-            );
-        }
-    }
-
-    private static string GetEntryDestinationFileName(this IEntry entry,
-        string fullDestinationDirectoryPath,
-        ExtractionOptions options
-    )
-    {
-        var file = Path.GetFileName(entry.Key.NotNull("Entry Key is null"))
-            .NotNull("File is null");
-        file = Utility.ReplaceInvalidFileNameChars(file);
-
-        if (options.ExtractFullPath)
-        {
-            var folder = Path.GetDirectoryName(entry.Key.NotNull("Entry Key is null"))
-                .NotNull("Directory is null");
-            var destdir = Path.GetFullPath(Path.Combine(fullDestinationDirectoryPath, folder));
-
-            DirectoryManagement.EnsurePathInDestinationDirectory(
-                destdir,
-                fullDestinationDirectoryPath,
-                entry.IsDirectory
-                    ? DirectoryManagement.CreateDirectoryOutsideDestinationMessage
-                    : DirectoryManagement.WriteFileOutsideDestinationMessage
-            );
-
-            DirectoryManagement.CreateDirectory(destdir, fullDestinationDirectoryPath);
-
-            return Path.Combine(destdir, file);
+            WriteEntryToDirectoryCore(entry, fullDestinationDirectoryPath, options, write);
         }
 
-        return Path.Combine(fullDestinationDirectoryPath, file);
-    }
-
-    public static void WriteEntryToFile(this IEntry entry,
-        string destinationFileName,
-        ExtractionOptions? options,
-        Action<string, FileMode> openAndWrite
-    )
-    {
-        options ??= new ExtractionOptions();
-        if (entry.LinkTarget != null)
+        internal void WriteEntryToDirectoryCore(
+            string fullDestinationDirectoryPath,
+            ExtractionOptions options,
+            Action<string>? write
+        )
         {
-            options.SymbolicLinkHandler?.Invoke(destinationFileName, entry.LinkTarget);
-        }
-        else
-        {
-            DirectoryManagement.EnsurePathIsNotReparsePoint(destinationFileName);
-
-            var fm = FileMode.Create;
-
-            if (!options.Overwrite)
-            {
-                fm = FileMode.CreateNew;
-            }
-
-            openAndWrite(destinationFileName, fm);
-            entry.PreserveExtractionOptions(destinationFileName, options);
-        }
-    }
-
-    internal static void PreserveExtractionOptions(this IEntry entry,
-        string destinationFileName,
-        ExtractionOptions options
-    )
-    {
-        if (options.PreserveFileTime || options.PreserveAttributes)
-        {
-            var nf = new FileInfo(destinationFileName);
-            if (!nf.Exists)
+            if (entry.LinkTarget is not null && options.SymbolicLinkHandler is null)
             {
                 return;
             }
 
-            // update file time to original packed time
-            if (options.PreserveFileTime)
+            var destinationFileName = GetEntryDestinationFileName(
+                entry,
+                fullDestinationDirectoryPath,
+                options
+            );
+
+            if (!entry.IsDirectory)
             {
-                if (entry.CreatedTime.HasValue)
+                destinationFileName = Path.GetFullPath(destinationFileName);
+
+                DirectoryManagement.EnsurePathInDestinationDirectory(
+                    destinationFileName,
+                    fullDestinationDirectoryPath,
+                    DirectoryManagement.WriteFileOutsideDestinationMessage
+                );
+
+                DirectoryManagement.EnsureNoReparsePointInDestinationDirectory(
+                    destinationFileName,
+                    fullDestinationDirectoryPath
+                );
+
+                if (entry.LinkTarget is not null)
                 {
-                    try
-                    {
-                        nf.CreationTime = entry.CreatedTime.Value;
-                    }
-                    catch
-                    {
-                        // Invalid time or the OS rejected
-                    }
+                    DirectoryManagement.EnsureLinkTargetInDestinationDirectory(
+                        destinationFileName,
+                        entry.LinkTarget,
+                        fullDestinationDirectoryPath
+                    );
                 }
 
-                if (entry.LastModifiedTime.HasValue)
-                {
-                    try
-                    {
-                        nf.LastWriteTime = entry.LastModifiedTime.Value;
-                    }
-                    catch
-                    {
-                        // Invalid time or the OS rejected
-                    }
-                }
+                write?.Invoke(destinationFileName);
+            }
+            else if (options.ExtractFullPath)
+            {
+                destinationFileName = Path.GetFullPath(destinationFileName);
 
-                if (entry.LastAccessedTime.HasValue)
-                {
-                    try
-                    {
-                        nf.LastAccessTime = entry.LastAccessedTime.Value;
-                    }
-                    catch
-                    {
-                        // Invalid time or the OS rejected
-                    }
-                }
+                DirectoryManagement.EnsurePathInDestinationDirectory(
+                    destinationFileName,
+                    fullDestinationDirectoryPath,
+                    DirectoryManagement.CreateDirectoryOutsideDestinationMessage
+                );
+
+                DirectoryManagement.CreateDirectory(
+                    destinationFileName,
+                    fullDestinationDirectoryPath
+                );
+            }
+        }
+
+        private string GetEntryDestinationFileName(
+            string fullDestinationDirectoryPath,
+            ExtractionOptions options
+        )
+        {
+            var file = Path.GetFileName(entry.Key.NotNull("Entry Key is null"))
+                .NotNull("File is null");
+            file = Utility.ReplaceInvalidFileNameChars(file);
+
+            if (options.ExtractFullPath)
+            {
+                var folder = Path.GetDirectoryName(entry.Key.NotNull("Entry Key is null"))
+                    .NotNull("Directory is null");
+                var destdir = Path.GetFullPath(Path.Combine(fullDestinationDirectoryPath, folder));
+
+                DirectoryManagement.EnsurePathInDestinationDirectory(
+                    destdir,
+                    fullDestinationDirectoryPath,
+                    entry.IsDirectory
+                        ? DirectoryManagement.CreateDirectoryOutsideDestinationMessage
+                        : DirectoryManagement.WriteFileOutsideDestinationMessage
+                );
+
+                DirectoryManagement.CreateDirectory(destdir, fullDestinationDirectoryPath);
+
+                return Path.Combine(destdir, file);
             }
 
-            if (options.PreserveAttributes)
+            return Path.Combine(fullDestinationDirectoryPath, file);
+        }
+
+        public void WriteEntryToFile(
+            string destinationFileName,
+            ExtractionOptions? options,
+            Action<string, FileMode> openAndWrite
+        )
+        {
+            options ??= new ExtractionOptions();
+            if (entry.LinkTarget != null)
             {
-                if (entry.Attrib.HasValue)
+                options.SymbolicLinkHandler?.Invoke(destinationFileName, entry.LinkTarget);
+            }
+            else
+            {
+                DirectoryManagement.EnsurePathIsNotReparsePoint(destinationFileName);
+
+                var fm = FileMode.Create;
+
+                if (!options.Overwrite)
                 {
-                    nf.Attributes = (FileAttributes)
-                        Enum.ToObject(typeof(FileAttributes), entry.Attrib.Value);
+                    fm = FileMode.CreateNew;
+                }
+
+                openAndWrite(destinationFileName, fm);
+                entry.PreserveExtractionOptions(destinationFileName, options);
+            }
+        }
+
+        internal void PreserveExtractionOptions(
+            string destinationFileName,
+            ExtractionOptions options
+        )
+        {
+            if (options.PreserveFileTime || options.PreserveAttributes)
+            {
+                var nf = new FileInfo(destinationFileName);
+                if (!nf.Exists)
+                {
+                    return;
+                }
+
+                // update file time to original packed time
+                if (options.PreserveFileTime)
+                {
+                    if (entry.CreatedTime.HasValue)
+                    {
+                        try
+                        {
+                            nf.CreationTime = entry.CreatedTime.Value;
+                        }
+                        catch
+                        {
+                            // Invalid time or the OS rejected
+                        }
+                    }
+
+                    if (entry.LastModifiedTime.HasValue)
+                    {
+                        try
+                        {
+                            nf.LastWriteTime = entry.LastModifiedTime.Value;
+                        }
+                        catch
+                        {
+                            // Invalid time or the OS rejected
+                        }
+                    }
+
+                    if (entry.LastAccessedTime.HasValue)
+                    {
+                        try
+                        {
+                            nf.LastAccessTime = entry.LastAccessedTime.Value;
+                        }
+                        catch
+                        {
+                            // Invalid time or the OS rejected
+                        }
+                    }
+                }
+
+                if (options.PreserveAttributes)
+                {
+                    if (entry.Attrib.HasValue)
+                    {
+                        nf.Attributes = (FileAttributes)
+                            Enum.ToObject(typeof(FileAttributes), entry.Attrib.Value);
+                    }
                 }
             }
         }

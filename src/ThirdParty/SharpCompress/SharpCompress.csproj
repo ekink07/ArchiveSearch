@@ -3,7 +3,7 @@
   <!-- SharpCompress 0.50.4, kaynak kod olarak (github.com/adamhathcock/sharpcompress, commit c083c6e).
        Kaynağı, yerel değişiklikleri ve güncelleme yolu: ../README.md. Lisanslar: ../../../THIRD-PARTY-NOTICES.txt -->
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>SharpCompress</AssemblyName>
     <RootNamespace>SharpCompress</RootNamespace>
     <LangVersion>latest</LangVersion>

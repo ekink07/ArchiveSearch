@@ -125,7 +125,7 @@ Click an archive in the sidebar to search only inside it; with an empty search b
 
 ## Build from source
 
-Requires the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) on Windows.
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) on Windows (`winget install Microsoft.DotNet.SDK.10`); `global.json` selects it.
 
 ```powershell
 git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
@@ -151,8 +151,8 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `tools/` | Icons, screenshots and social card, test archives, `set-github-user.ps1` for the `YOUR_GITHUB_USER` placeholders |
 
 Every push runs the [CI workflow](.github/workflows/ci.yml). Pushing a tag such as `v1.1.0` runs the tests, builds the x64 and ARM64 exes,
-signs them when signing secrets are set ([packaging/signing](packaging/signing/README.md)), publishes a GitHub release
-and updates [winget](packaging/winget/README.md) ([workflow](.github/workflows/release.yml)).
+signs them when signing secrets are set, publishes a GitHub release
+and updates winget ([workflow](.github/workflows/release.yml)). Step-by-step publishing, winget and code signing guide (Turkish): [packaging/README.md](packaging/README.md).
 
 ## Limitations
 

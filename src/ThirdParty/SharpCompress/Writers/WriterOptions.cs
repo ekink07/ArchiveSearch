@@ -32,15 +32,13 @@ public sealed record WriterOptions : IWriterOptions
     /// </summary>
     public int CompressionLevel
     {
-        get => _compressionLevel;
+        get;
         set
         {
             CompressionLevelValidation.Validate(CompressionType, value);
-            _compressionLevel = value;
+            field = value;
         }
     }
-
-    private int _compressionLevel;
 
     /// <summary>
     /// SharpCompress will keep the supplied streams open.  Default is true.

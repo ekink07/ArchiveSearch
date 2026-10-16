@@ -6,61 +6,64 @@ namespace SharpCompress.Archives;
 
 public static class IArchiveExtensions
 {
-    /// <summary>
-    /// Extract to specific directory with progress reporting
-    /// </summary>
-    /// <param name="destinationDirectory">The folder to extract into.</param>
-    /// <param name="options">Extraction options.</param>
-    /// <param name="progress">Optional progress reporter for tracking extraction progress.</param>
-    public static void WriteToDirectory(this IArchive archive,
-        string destinationDirectory,
-        ExtractionOptions? options = null,
-        IProgress<ProgressReport>? progress = null
-    )
+    extension(IArchive archive)
     {
-        if (archive.IsSolid || archive.Type == ArchiveType.SevenZip)
+        /// <summary>
+        /// Extract to specific directory with progress reporting
+        /// </summary>
+        /// <param name="destinationDirectory">The folder to extract into.</param>
+        /// <param name="options">Extraction options.</param>
+        /// <param name="progress">Optional progress reporter for tracking extraction progress.</param>
+        public void WriteToDirectory(
+            string destinationDirectory,
+            ExtractionOptions? options = null,
+            IProgress<ProgressReport>? progress = null
+        )
         {
-            using var reader = archive.ExtractAllEntries();
-            reader.WriteAllToDirectory(destinationDirectory, options);
-        }
-        else
-        {
-            archive.WriteToDirectoryInternal(destinationDirectory, options, progress);
-        }
-    }
-
-    private static void WriteToDirectoryInternal(this IArchive archive,
-        string destinationDirectory,
-        ExtractionOptions? options,
-        IProgress<ProgressReport>? progress
-    )
-    {
-        options ??= new ExtractionOptions();
-        var fullDestinationDirectoryPath = DirectoryManagement.GetFullDestinationDirectoryPath(
-            destinationDirectory
-        );
-
-        var totalBytes = archive.TotalUncompressedSize;
-        var bytesRead = 0L;
-
-        foreach (var entry in archive.Entries)
-        {
-            if (entry.IsDirectory)
+            if (archive.IsSolid || archive.Type == ArchiveType.SevenZip)
             {
-                entry.WriteEntryToDirectoryCore(fullDestinationDirectoryPath, options, null);
-                continue;
+                using var reader = archive.ExtractAllEntries();
+                reader.WriteAllToDirectory(destinationDirectory, options);
             }
+            else
+            {
+                archive.WriteToDirectoryInternal(destinationDirectory, options, progress);
+            }
+        }
 
-            entry.WriteEntryToDirectoryCore(
-                fullDestinationDirectoryPath,
-                options,
-                path => entry.WriteToFile(path, options)
+        private void WriteToDirectoryInternal(
+            string destinationDirectory,
+            ExtractionOptions? options,
+            IProgress<ProgressReport>? progress
+        )
+        {
+            options ??= new ExtractionOptions();
+            var fullDestinationDirectoryPath = DirectoryManagement.GetFullDestinationDirectoryPath(
+                destinationDirectory
             );
 
-            bytesRead += entry.Size;
-            progress?.Report(
-                new ProgressReport(entry.Key ?? string.Empty, bytesRead, totalBytes)
-            );
+            var totalBytes = archive.TotalUncompressedSize;
+            var bytesRead = 0L;
+
+            foreach (var entry in archive.Entries)
+            {
+                if (entry.IsDirectory)
+                {
+                    entry.WriteEntryToDirectoryCore(fullDestinationDirectoryPath, options, null);
+                    continue;
+                }
+
+                entry.WriteEntryToDirectoryCore(
+                    fullDestinationDirectoryPath,
+                    options,
+                    path => entry.WriteToFile(path, options)
+                );
+
+                bytesRead += entry.Size;
+                progress?.Report(
+                    new ProgressReport(entry.Key ?? string.Empty, bytesRead, totalBytes)
+                );
+            }
         }
     }
 }

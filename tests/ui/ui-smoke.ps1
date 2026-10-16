@@ -2,7 +2,7 @@
 # (klavye/fare kullanmadan, odak çalmadan) ana işlevleri dener. Çıkış kodu = başarısız denetim sayısı.
 #   pwsh tests/ui/ui-smoke.ps1 [-Exe <ArsivAra.exe>] [-Screenshots <klasör>]
 param(
-  [string]$Exe = (Join-Path $PSScriptRoot '..\..\src\ArsivAra.App\bin\Release\net9.0-windows\ArsivAra.exe'),
+  [string]$Exe = (Join-Path $PSScriptRoot '..\..\src\ArsivAra.App\bin\Release\net10.0-windows\ArsivAra.exe'),
   [string]$Screenshots
 )
 $ErrorActionPreference = 'Stop'

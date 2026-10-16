@@ -100,7 +100,7 @@ Die Schaltfläche **?** neben dem Suchfeld zeigt dieselbe Liste. Tasten: `Strg +
 
 ## Aus dem Quellcode bauen
 
-Benötigt das [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) unter Windows.
+Benötigt das [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) unter Windows (`winget install Microsoft.DotNet.SDK.10`).
 
 ```powershell
 git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
@@ -110,8 +110,8 @@ dotnet test tests/ArsivAra.Core.Tests        # Unit-Tests mit echten Beispielarc
 pwsh tests/ui/ui-smoke.ps1                   # UI-Smoke-Test über UI Automation (Release-Build)
 ```
 
-Ein Tag wie `v1.1.0` startet Tests, baut x64- und ARM64-exe, signiert sie bei vorhandenen Secrets ([packaging/signing](packaging/signing/README.md)),
-veröffentlicht ein GitHub-Release und aktualisiert [winget](packaging/winget/README.md).
+Ein Tag wie `v1.1.0` startet Tests, baut x64- und ARM64-exe, signiert sie bei vorhandenen Secrets,
+veröffentlicht ein GitHub-Release und aktualisiert winget. Anleitung für Veröffentlichung, winget und Codesignatur (Türkisch): [packaging/README.md](packaging/README.md).
 
 ## Einschränkungen
 

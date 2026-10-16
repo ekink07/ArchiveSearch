@@ -8,59 +8,62 @@ namespace SharpCompress.Archives;
 
 public static class IWritableAsyncArchiveExtensions
 {
-    public static async ValueTask AddAllFromDirectoryAsync(this IWritableAsyncArchive writableArchive,
-        string directoryPath,
-        string searchPattern = "*.*",
-        SearchOption searchOption = SearchOption.AllDirectories
-    )
+    extension(IWritableAsyncArchive writableArchive)
     {
-        using (writableArchive.PauseEntryRebuilding())
+        public async ValueTask AddAllFromDirectoryAsync(
+            string directoryPath,
+            string searchPattern = "*.*",
+            SearchOption searchOption = SearchOption.AllDirectories
+        )
         {
-            foreach (
-                var filePath in Directory.EnumerateFiles(
-                    directoryPath,
-                    searchPattern,
-                    searchOption
-                )
-            )
+            using (writableArchive.PauseEntryRebuilding())
             {
-                var fileInfo = new FileInfo(filePath);
-                await writableArchive
-                    .AddEntryAsync(
-                        filePath.Substring(directoryPath.Length),
-                        fileInfo.OpenRead(),
-                        true,
-                        fileInfo.Length,
-                        fileInfo.LastWriteTime
+                foreach (
+                    var filePath in Directory.EnumerateFiles(
+                        directoryPath,
+                        searchPattern,
+                        searchOption
                     )
-                    .ConfigureAwait(false);
+                )
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    await writableArchive
+                        .AddEntryAsync(
+                            filePath.Substring(directoryPath.Length),
+                            fileInfo.OpenRead(),
+                            true,
+                            fileInfo.Length,
+                            fileInfo.LastWriteTime
+                        )
+                        .ConfigureAwait(false);
+                }
             }
         }
-    }
 
-    public static ValueTask<IArchiveEntry> AddEntryAsync(this IWritableAsyncArchive writableArchive, string key, string file) =>
-        writableArchive.AddEntryAsync(key, new FileInfo(file));
+        public ValueTask<IArchiveEntry> AddEntryAsync(string key, string file) =>
+            writableArchive.AddEntryAsync(key, new FileInfo(file));
 
-    public static ValueTask<IArchiveEntry> AddEntryAsync(this IWritableAsyncArchive writableArchive,
-        string key,
-        Stream source,
-        long size = 0,
-        DateTime? modified = null
-    ) => writableArchive.AddEntryAsync(key, source, false, size, modified);
+        public ValueTask<IArchiveEntry> AddEntryAsync(
+            string key,
+            Stream source,
+            long size = 0,
+            DateTime? modified = null
+        ) => writableArchive.AddEntryAsync(key, source, false, size, modified);
 
-    public static ValueTask<IArchiveEntry> AddEntryAsync(this IWritableAsyncArchive writableArchive, string key, FileInfo fileInfo)
-    {
-        if (!fileInfo.Exists)
+        public ValueTask<IArchiveEntry> AddEntryAsync(string key, FileInfo fileInfo)
         {
-            throw new ArgumentException("FileInfo does not exist.");
+            if (!fileInfo.Exists)
+            {
+                throw new ArgumentException("FileInfo does not exist.");
+            }
+            return writableArchive.AddEntryAsync(
+                key,
+                fileInfo.OpenRead(),
+                true,
+                fileInfo.Length,
+                fileInfo.LastWriteTime
+            );
         }
-        return writableArchive.AddEntryAsync(
-            key,
-            fileInfo.OpenRead(),
-            true,
-            fileInfo.Length,
-            fileInfo.LastWriteTime
-        );
     }
 
     public static ValueTask SaveToAsync<TOptions>(

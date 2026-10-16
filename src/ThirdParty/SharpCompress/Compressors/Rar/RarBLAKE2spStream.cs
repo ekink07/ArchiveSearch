@@ -351,7 +351,7 @@ internal partial class RarBLAKE2spStream : RarStream
         else
         {
             EnsureHash();
-            if (!disableCRCCheck && !GetCrc().AsSpan().SequenceEqual(readStream.CurrentCrc) && count != 0)
+            if (!disableCRCCheck && !GetCrc().SequenceEqual(readStream.CurrentCrc) && count != 0)
             {
                 // NOTE: we use the last FileHeader in a multipart volume to check CRC
                 throw new InvalidFormatException("file crc mismatch");

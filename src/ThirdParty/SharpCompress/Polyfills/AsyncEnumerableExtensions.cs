@@ -30,124 +30,127 @@ public static class EnumerableExtensions
 public static class AsyncEnumerableExtensions
 {
 #if !NET10_0_OR_GREATER
-    public static async IAsyncEnumerable<TResult> Select<T, TResult>(this IAsyncEnumerable<T> source, Func<T, TResult> selector)
+    extension<T>(IAsyncEnumerable<T> source)
     {
-        await foreach (var element in source.ConfigureAwait(false))
+        public async IAsyncEnumerable<TResult> Select<TResult>(Func<T, TResult> selector)
         {
-            yield return selector(element);
-        }
-    }
-
-    public static async ValueTask<int> CountAsync<T>(this IAsyncEnumerable<T> source, CancellationToken cancellationToken = default)
-    {
-        await using var e = source.GetAsyncEnumerator(cancellationToken);
-
-        var count = 0;
-        while (await e.MoveNextAsync().ConfigureAwait(false))
-        {
-            checked
+            await foreach (var element in source.ConfigureAwait(false))
             {
-                count++;
+                yield return selector(element);
             }
         }
 
-        return count;
-    }
-
-    public static async IAsyncEnumerable<T> Take<T>(this IAsyncEnumerable<T> source, int count)
-    {
-        await foreach (var element in source.ConfigureAwait(false))
+        public async ValueTask<int> CountAsync(CancellationToken cancellationToken = default)
         {
-            yield return element;
+            await using var e = source.GetAsyncEnumerator(cancellationToken);
 
-            if (--count == 0)
+            var count = 0;
+            while (await e.MoveNextAsync().ConfigureAwait(false))
             {
-                break;
+                checked
+                {
+                    count++;
+                }
             }
-        }
-    }
 
-    public static async ValueTask<List<T>> ToListAsync<T>(this IAsyncEnumerable<T> source)
-    {
-        var list = new List<T>();
-        await foreach (var item in source.ConfigureAwait(false))
-        {
-            list.Add(item);
+            return count;
         }
-        return list;
-    }
 
-    public static async ValueTask<bool> AllAsync<T>(this IAsyncEnumerable<T> source, Func<T, bool> predicate)
-    {
-        await foreach (var item in source.ConfigureAwait(false))
+        public async IAsyncEnumerable<T> Take(int count)
         {
-            if (!predicate(item))
+            await foreach (var element in source.ConfigureAwait(false))
             {
-                return false;
+                yield return element;
+
+                if (--count == 0)
+                {
+                    break;
+                }
             }
         }
 
-        return true;
-    }
-
-    public static async IAsyncEnumerable<T> Where<T>(this IAsyncEnumerable<T> source, Func<T, bool> predicate)
-    {
-        await foreach (var item in source.ConfigureAwait(false))
+        public async ValueTask<List<T>> ToListAsync()
         {
-            if (predicate(item))
+            var list = new List<T>();
+            await foreach (var item in source.ConfigureAwait(false))
             {
-                yield return item;
+                list.Add(item);
+            }
+            return list;
+        }
+
+        public async ValueTask<bool> AllAsync(Func<T, bool> predicate)
+        {
+            await foreach (var item in source.ConfigureAwait(false))
+            {
+                if (!predicate(item))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public async IAsyncEnumerable<T> Where(Func<T, bool> predicate)
+        {
+            await foreach (var item in source.ConfigureAwait(false))
+            {
+                if (predicate(item))
+                {
+                    yield return item;
+                }
             }
         }
-    }
 
-    public static async ValueTask<T> SingleAsync<T>(this IAsyncEnumerable<T> source, Func<T, bool>? predicate = null)
-    {
-        IAsyncEnumerator<T> enumerator;
-        if (predicate is null)
+        public async ValueTask<T> SingleAsync(Func<T, bool>? predicate = null)
         {
-            enumerator = source.GetAsyncEnumerator();
-        }
-        else
-        {
-            enumerator = source.Where(predicate).GetAsyncEnumerator();
+            IAsyncEnumerator<T> enumerator;
+            if (predicate is null)
+            {
+                enumerator = source.GetAsyncEnumerator();
+            }
+            else
+            {
+                enumerator = source.Where(predicate).GetAsyncEnumerator();
+            }
+
+            if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+            {
+                throw new ArchiveOperationException("The source sequence is empty.");
+            }
+            var value = enumerator.Current;
+            if (await enumerator.MoveNextAsync().ConfigureAwait(false))
+            {
+                throw new ArchiveOperationException(
+                    "The source sequence contains more than one element."
+                );
+            }
+            return value;
         }
 
-        if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+        public async ValueTask<T> FirstAsync()
         {
+            await foreach (var item in source.ConfigureAwait(false))
+            {
+                return item;
+            }
             throw new ArchiveOperationException("The source sequence is empty.");
         }
-        var value = enumerator.Current;
-        if (await enumerator.MoveNextAsync().ConfigureAwait(false))
-        {
-            throw new ArchiveOperationException(
-                "The source sequence contains more than one element."
-            );
-        }
-        return value;
-    }
 
-    public static async ValueTask<T> FirstAsync<T>(this IAsyncEnumerable<T> source)
-    {
-        await foreach (var item in source.ConfigureAwait(false))
-        {
-            return item;
-        }
-        throw new ArchiveOperationException("The source sequence is empty.");
-    }
-
-    public static async ValueTask<T?> FirstOrDefaultAsync<T>(this IAsyncEnumerable<T> source,
-        CancellationToken cancellationToken = default
-    )
-    {
-        await foreach (
-            var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)
+        public async ValueTask<T?> FirstOrDefaultAsync(
+            CancellationToken cancellationToken = default
         )
         {
-            return item;
-        }
+            await foreach (
+                var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)
+            )
+            {
+                return item;
+            }
 
-        return default;
+            return default;
+        }
     }
 #endif
 

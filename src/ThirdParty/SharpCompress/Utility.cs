@@ -148,144 +148,147 @@ internal static partial class Utility
         return sTime.AddSeconds(unixtime);
     }
 
-    public static long TransferTo(this Stream source, Stream destination, long maxLength, int? bufferSize)
+    extension(Stream source)
     {
-        // Use ReadOnlySubStream to limit reading and leverage framework's CopyTo
-        using var limitedStream = new IO.ReadOnlySubStream(source, maxLength);
-        limitedStream.CopyTo(destination, bufferSize ?? Constants.BufferSize);
-        return limitedStream.Position;
-    }
-
-    public static async ValueTask SkipAsync(this Stream source,
-        long advanceAmount,
-        CancellationToken cancellationToken = default
-    )
-    {
-        if (source.CanSeek && source is not SharpCompressStream)
+        public long TransferTo(Stream destination, long maxLength, int? bufferSize)
         {
-            source.Position += advanceAmount;
-            return;
+            // Use ReadOnlySubStream to limit reading and leverage framework's CopyTo
+            using var limitedStream = new IO.ReadOnlySubStream(source, maxLength);
+            limitedStream.CopyTo(destination, bufferSize ?? Constants.BufferSize);
+            return limitedStream.Position;
         }
 
-        var array = ArrayPool<byte>.Shared.Rent(Constants.BufferSize);
-        try
+        public async ValueTask SkipAsync(
+            long advanceAmount,
+            CancellationToken cancellationToken = default
+        )
         {
-            while (advanceAmount > 0)
+            if (source.CanSeek && source is not SharpCompressStream)
             {
-                var toRead = (int)Math.Min(array.Length, advanceAmount);
-                var read = await source
-                    .ReadAsync(array, 0, toRead, cancellationToken)
-                    .ConfigureAwait(false);
-                if (read <= 0)
-                {
-                    break;
-                }
+                source.Position += advanceAmount;
+                return;
+            }
 
-                advanceAmount -= read;
+            var array = ArrayPool<byte>.Shared.Rent(Constants.BufferSize);
+            try
+            {
+                while (advanceAmount > 0)
+                {
+                    var toRead = (int)Math.Min(array.Length, advanceAmount);
+                    var read = await source
+                        .ReadAsync(array, 0, toRead, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (read <= 0)
+                    {
+                        break;
+                    }
+
+                    advanceAmount -= read;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(array);
             }
         }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(array);
-        }
-    }
 
 #if NET8_0_OR_GREATER
-    public static bool ReadFully(this Stream source, byte[] buffer)
-    {
-        try
+        public bool ReadFully(byte[] buffer)
         {
-            source.ReadExactly(buffer);
-            return true;
+            try
+            {
+                source.ReadExactly(buffer);
+                return true;
+            }
+            catch (EndOfStreamException)
+            {
+                return false;
+            }
         }
-        catch (EndOfStreamException)
-        {
-            return false;
-        }
-    }
 
-    public static bool ReadFully(this Stream source, Span<byte> buffer)
-    {
-        try
+        public bool ReadFully(Span<byte> buffer)
         {
-            source.ReadExactly(buffer);
-            return true;
+            try
+            {
+                source.ReadExactly(buffer);
+                return true;
+            }
+            catch (EndOfStreamException)
+            {
+                return false;
+            }
         }
-        catch (EndOfStreamException)
-        {
-            return false;
-        }
-    }
 #else
-    public static bool ReadFully(this Stream source, byte[] buffer)
-    {
-        var total = 0;
-        int read;
-        while ((read = source.Read(buffer, total, buffer.Length - total)) > 0)
+        public bool ReadFully(byte[] buffer)
         {
-            total += read;
-            if (total >= buffer.Length)
+            var total = 0;
+            int read;
+            while ((read = source.Read(buffer, total, buffer.Length - total)) > 0)
             {
-                return true;
+                total += read;
+                if (total >= buffer.Length)
+                {
+                    return true;
+                }
             }
+
+            return (total >= buffer.Length);
         }
 
-        return (total >= buffer.Length);
-    }
-
-    public static bool ReadFully(this Stream source, Span<byte> buffer)
-    {
-        var total = 0;
-        int read;
-        while ((read = source.Read(buffer.Slice(total, buffer.Length - total))) > 0)
+        public bool ReadFully(Span<byte> buffer)
         {
-            total += read;
-            if (total >= buffer.Length)
+            var total = 0;
+            int read;
+            while ((read = source.Read(buffer.Slice(total, buffer.Length - total))) > 0)
             {
-                return true;
+                total += read;
+                if (total >= buffer.Length)
+                {
+                    return true;
+                }
             }
-        }
 
-        return (total >= buffer.Length);
-    }
+            return (total >= buffer.Length);
+        }
 #endif
 
-    /// <summary>
-    /// Read exactly the requested number of bytes from a stream. Throws EndOfStreamException if not enough data is available.
-    /// </summary>
-    public static void ReadExact(this Stream source, byte[] buffer, int offset, int length)
-    {
+        /// <summary>
+        /// Read exactly the requested number of bytes from a stream. Throws EndOfStreamException if not enough data is available.
+        /// </summary>
+        public void ReadExact(byte[] buffer, int offset, int length)
+        {
 #if LEGACY_DOTNET
-        if (source is null)
-        {
-            throw new ArgumentNullException();
-        }
+            if (source is null)
+            {
+                throw new ArgumentNullException();
+            }
 #else
-        ThrowHelper.ThrowIfNull(source);
+            ThrowHelper.ThrowIfNull(source);
 #endif
 
-        ThrowHelper.ThrowIfNull(buffer);
+            ThrowHelper.ThrowIfNull(buffer);
 
-        if (offset < 0 || offset > buffer.Length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset));
-        }
-
-        if (length < 0 || length > buffer.Length - offset)
-        {
-            throw new ArgumentOutOfRangeException(nameof(length));
-        }
-
-        while (length > 0)
-        {
-            var fetched = source.Read(buffer, offset, length);
-            if (fetched <= 0)
+            if (offset < 0 || offset > buffer.Length)
             {
-                throw new IncompleteArchiveException("Unexpected end of stream.");
+                throw new ArgumentOutOfRangeException(nameof(offset));
             }
 
-            offset += fetched;
-            length -= fetched;
+            if (length < 0 || length > buffer.Length - offset)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length));
+            }
+
+            while (length > 0)
+            {
+                var fetched = source.Read(buffer, offset, length);
+                if (fetched <= 0)
+                {
+                    throw new IncompleteArchiveException("Unexpected end of stream.");
+                }
+
+                offset += fetched;
+                length -= fetched;
+            }
         }
     }
 

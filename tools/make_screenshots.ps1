@@ -1,10 +1,10 @@
-﻿# Belgelerdeki ekran görüntülerini üretir: docs/images/{empty,list,search,grid,about}.png
+﻿# Belgelerdeki ekran görüntülerini üretir: docs/images/{empty,search,grid,about}.png
 #   pwsh tools/make_screenshots.ps1 [-Exe <ArsivAra.exe>]
 # Örnek arşivler geçici klasörde .NET ve Windows'un tar.exe'siyle hazırlanır; 7z, şifreli RAR ve ISO için test arşivleri kopyalanır.
 # Program geçici bir veri klasörüyle açılır, UI Automation ile yönetilir, pencere PrintWindow ile yakalanır:
 # klavye, fare ve odak kullanılmaz; üstteki pencereler ya da fare imleci görüntüye girmez.
 param(
-  [string]$Exe = (Join-Path $PSScriptRoot '..\src\ArsivAra.App\bin\Release\net9.0-windows\ArsivAra.exe'),
+  [string]$Exe = (Join-Path $PSScriptRoot '..\src\ArsivAra.App\bin\Release\net10.0-windows\ArsivAra.exe'),
   [string]$Out = (Join-Path $PSScriptRoot '..\docs\images'),
   [int]$Width = 1180,
   [int]$Height = 720
@@ -222,11 +222,10 @@ try {
   Save-Window $app.Handle 'empty'
   Close-App $app
 
-  # 2) Liste, arama + önizleme, kareler, Hakkında
+  # 2) Arama + önizleme, kareler, Hakkında
   $app = Start-App 'dolu' '{ "Language": "tr", "ShowPreview": false, "IconSize": 16 }' $archives; $apps += $app
   $root = $app.Root
   Wait-For { (Find $root 'LibraryStatus').Current.Name -match "^$($archives.Count) arşiv" } 60 | Out-Null
-  Save-Window $app.Handle 'list'
 
   Invoke $root 'PreviewButton'
   Search $root 'toplanti'

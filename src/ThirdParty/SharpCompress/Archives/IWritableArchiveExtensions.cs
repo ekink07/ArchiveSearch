@@ -6,57 +6,60 @@ namespace SharpCompress.Archives;
 
 public static class IWritableArchiveExtensions
 {
-    public static void AddAllFromDirectory(this IWritableArchive writableArchive,
-        string directoryPath,
-        string searchPattern = "*.*",
-        SearchOption searchOption = SearchOption.AllDirectories
-    )
+    extension(IWritableArchive writableArchive)
     {
-        using (writableArchive.PauseEntryRebuilding())
+        public void AddAllFromDirectory(
+            string directoryPath,
+            string searchPattern = "*.*",
+            SearchOption searchOption = SearchOption.AllDirectories
+        )
         {
-            foreach (
-                var filePath in Directory.EnumerateFiles(
-                    directoryPath,
-                    searchPattern,
-                    searchOption
-                )
-            )
+            using (writableArchive.PauseEntryRebuilding())
             {
-                var fileInfo = new FileInfo(filePath);
-                writableArchive.AddEntry(
-                    filePath.Substring(directoryPath.Length),
-                    fileInfo.OpenRead(),
-                    true,
-                    fileInfo.Length,
-                    fileInfo.LastWriteTime
-                );
+                foreach (
+                    var filePath in Directory.EnumerateFiles(
+                        directoryPath,
+                        searchPattern,
+                        searchOption
+                    )
+                )
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    writableArchive.AddEntry(
+                        filePath.Substring(directoryPath.Length),
+                        fileInfo.OpenRead(),
+                        true,
+                        fileInfo.Length,
+                        fileInfo.LastWriteTime
+                    );
+                }
             }
         }
-    }
 
-    public static IArchiveEntry AddEntry(this IWritableArchive writableArchive, string key, string file) =>
-        writableArchive.AddEntry(key, new FileInfo(file));
+        public IArchiveEntry AddEntry(string key, string file) =>
+            writableArchive.AddEntry(key, new FileInfo(file));
 
-    public static IArchiveEntry AddEntry(this IWritableArchive writableArchive,
-        string key,
-        Stream source,
-        long size = 0,
-        DateTime? modified = null
-    ) => writableArchive.AddEntry(key, source, false, size, modified);
+        public IArchiveEntry AddEntry(
+            string key,
+            Stream source,
+            long size = 0,
+            DateTime? modified = null
+        ) => writableArchive.AddEntry(key, source, false, size, modified);
 
-    public static IArchiveEntry AddEntry(this IWritableArchive writableArchive, string key, FileInfo fileInfo)
-    {
-        if (!fileInfo.Exists)
+        public IArchiveEntry AddEntry(string key, FileInfo fileInfo)
         {
-            throw new ArgumentException("FileInfo does not exist.");
+            if (!fileInfo.Exists)
+            {
+                throw new ArgumentException("FileInfo does not exist.");
+            }
+            return writableArchive.AddEntry(
+                key,
+                fileInfo.OpenRead(),
+                true,
+                fileInfo.Length,
+                fileInfo.LastWriteTime
+            );
         }
-        return writableArchive.AddEntry(
-            key,
-            fileInfo.OpenRead(),
-            true,
-            fileInfo.Length,
-            fileInfo.LastWriteTime
-        );
     }
 
     public static void SaveTo<TOptions>(

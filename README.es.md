@@ -100,7 +100,7 @@ El botón **?** junto al cuadro de búsqueda muestra la misma lista. Teclas: `Ct
 
 ## Compilar desde el código
 
-Requiere el [SDK de .NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) en Windows.
+Requiere el [SDK de .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) en Windows (`winget install Microsoft.DotNet.SDK.10`).
 
 ```powershell
 git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
@@ -110,8 +110,8 @@ dotnet test tests/ArsivAra.Core.Tests        # pruebas unitarias con archivos de
 pwsh tests/ui/ui-smoke.ps1                   # prueba de la interfaz con UI Automation (compilación Release)
 ```
 
-Una etiqueta como `v1.1.0` ejecuta las pruebas, compila los exe x64 y ARM64, los firma si hay secretos configurados ([packaging/signing](packaging/signing/README.md)),
-publica una versión en GitHub y actualiza [winget](packaging/winget/README.md).
+Una etiqueta como `v1.1.0` ejecuta las pruebas, compila los exe x64 y ARM64, los firma si hay secretos configurados,
+publica una versión en GitHub y actualiza winget. Guía de publicación, winget y firma de código (en turco): [packaging/README.md](packaging/README.md).
 
 ## Limitaciones
 

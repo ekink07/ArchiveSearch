@@ -9,94 +9,97 @@ namespace SharpCompress.Readers;
 
 public static class IAsyncReaderExtensions
 {
-    /// <summary>
-    /// Extract to specific directory asynchronously, retaining filename
-    /// </summary>
-    public static async ValueTask WriteEntryToDirectoryAsync(this IAsyncReader reader,
-        string destinationDirectory,
-        ExtractionOptions? options = null,
-        CancellationToken cancellationToken = default
-    ) =>
-        await reader
-            .Entry.WriteEntryToDirectoryAsync(
-                destinationDirectory,
-                options,
-                async (path, ct) =>
-                    await reader.WriteEntryToFileAsync(path, options, ct).ConfigureAwait(false),
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-
-    /// <summary>
-    /// Extract to specific file asynchronously
-    /// </summary>
-    public static async ValueTask WriteEntryToFileAsync(this IAsyncReader reader,
-        string destinationFileName,
-        ExtractionOptions? options = null,
-        CancellationToken cancellationToken = default
-    )
+    extension(IAsyncReader reader)
     {
-        options ??= new ExtractionOptions();
-        await reader
-            .Entry.WriteEntryToFileAsync(
-                destinationFileName,
-                options,
-                async (x, fm, ct) =>
-                {
-                    using var fs = File.Open(x, fm);
-                    await CopyEntryToAsync(reader, fs, options, ct).ConfigureAwait(false);
-                },
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Extract all remaining unread entries to specific directory asynchronously, retaining filename
-    /// </summary>
-    public static async ValueTask WriteAllToDirectoryAsync(this IAsyncReader reader,
-        string destinationDirectory,
-        ExtractionOptions? options = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        while (await reader.MoveToNextEntryAsync(cancellationToken).ConfigureAwait(false))
-        {
+        /// <summary>
+        /// Extract to specific directory asynchronously, retaining filename
+        /// </summary>
+        public async ValueTask WriteEntryToDirectoryAsync(
+            string destinationDirectory,
+            ExtractionOptions? options = null,
+            CancellationToken cancellationToken = default
+        ) =>
             await reader
-                .WriteEntryToDirectoryAsync(destinationDirectory, options, cancellationToken)
+                .Entry.WriteEntryToDirectoryAsync(
+                    destinationDirectory,
+                    options,
+                    async (path, ct) =>
+                        await reader.WriteEntryToFileAsync(path, options, ct).ConfigureAwait(false),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
+        /// <summary>
+        /// Extract to specific file asynchronously
+        /// </summary>
+        public async ValueTask WriteEntryToFileAsync(
+            string destinationFileName,
+            ExtractionOptions? options = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            options ??= new ExtractionOptions();
+            await reader
+                .Entry.WriteEntryToFileAsync(
+                    destinationFileName,
+                    options,
+                    async (x, fm, ct) =>
+                    {
+                        using var fs = File.Open(x, fm);
+                        await CopyEntryToAsync(reader, fs, options, ct).ConfigureAwait(false);
+                    },
+                    cancellationToken
+                )
                 .ConfigureAwait(false);
         }
-    }
 
-    public static async ValueTask WriteEntryToAsync(this IAsyncReader reader,
-        string destinationFileName,
-        ExtractionOptions? options = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        options ??= new ExtractionOptions();
-        await reader
-            .Entry.WriteEntryToFileAsync(
-                destinationFileName,
-                options,
-                async (x, fm, ct) =>
-                {
-                    using var fs = File.Open(x, fm);
-                    await CopyEntryToAsync(reader, fs, options, ct).ConfigureAwait(false);
-                },
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
+        /// <summary>
+        /// Extract all remaining unread entries to specific directory asynchronously, retaining filename
+        /// </summary>
+        public async ValueTask WriteAllToDirectoryAsync(
+            string destinationDirectory,
+            ExtractionOptions? options = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            while (await reader.MoveToNextEntryAsync(cancellationToken).ConfigureAwait(false))
+            {
+                await reader
+                    .WriteEntryToDirectoryAsync(destinationDirectory, options, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
 
-    public static async ValueTask WriteEntryToAsync(this IAsyncReader reader,
-        FileInfo destinationFileInfo,
-        ExtractionOptions? options = null,
-        CancellationToken cancellationToken = default
-    ) =>
-        await reader
-            .WriteEntryToAsync(destinationFileInfo.FullName, options, cancellationToken)
-            .ConfigureAwait(false);
+        public async ValueTask WriteEntryToAsync(
+            string destinationFileName,
+            ExtractionOptions? options = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            options ??= new ExtractionOptions();
+            await reader
+                .Entry.WriteEntryToFileAsync(
+                    destinationFileName,
+                    options,
+                    async (x, fm, ct) =>
+                    {
+                        using var fs = File.Open(x, fm);
+                        await CopyEntryToAsync(reader, fs, options, ct).ConfigureAwait(false);
+                    },
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        public async ValueTask WriteEntryToAsync(
+            FileInfo destinationFileInfo,
+            ExtractionOptions? options = null,
+            CancellationToken cancellationToken = default
+        ) =>
+            await reader
+                .WriteEntryToAsync(destinationFileInfo.FullName, options, cancellationToken)
+                .ConfigureAwait(false);
+    }
 
     private static async ValueTask CopyEntryToAsync(
         IAsyncReader reader,

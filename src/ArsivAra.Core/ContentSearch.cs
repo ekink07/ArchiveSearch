@@ -7,9 +7,9 @@ using System.Text;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// "icerik:" araması: diğer koşullarla daraltılmış sonuçlarda dosyaların içine bakar.
-/// Düz metin türleri ve Office/OpenDocument belgeleri (docx, xlsx, pptx, odt, ods, odp) okunur; PDF ve ikili dosyalar atlanır.
-/// Her arşiv bir kez açılır (solid arşivde tek geçiş). Yavaş bir işlemdir; ilerleme bildirilir ve iptal edilebilir.
+/// The "icerik:" search: looks inside the files of the results already narrowed down by the other conditions.
+/// Plain-text types and Office/OpenDocument documents (docx, xlsx, pptx, odt, ods, odp) are read; PDFs and binary files are skipped.
+/// Each archive is opened once (a single pass for a solid archive). It is a slow operation; progress is reported and it can be cancelled.
 /// </summary>
 public static class ContentSearch
 {
@@ -34,7 +34,7 @@ public static class ContentSearch
     public static bool IsTextName(string name) => TextExtensions.Contains(Path.GetExtension(name));
     public static bool IsOfficeName(string name) => OfficeExtensions.Contains(Path.GetExtension(name));
 
-    /// <summary>Bu dosyanın içine bakılabilir mi (tür ve boyut).</summary>
+    /// <summary>Whether this file's contents can be searched (type and size).</summary>
     public static bool CanSearch(in ArchiveEntry e)
     {
         if (e.IsDirectory) return false;
@@ -44,10 +44,10 @@ public static class ContentSearch
 
     public sealed record Result(int[] Hits, int Searched, int Skipped, int Failed);
 
-    /// <param name="hits">Diğer koşullara uyan sonuçlar.</param>
-    /// <param name="foldedTerms">Hepsi dosyada geçmeli (katlanmış: küçük harf, aksansız).</param>
-    /// <param name="passwordFor">Şifreli arşivler için parola (yoksa null).</param>
-    /// <param name="progress">Bakılan dosya sayısı / toplam.</param>
+    /// <param name="hits">Results that match the other conditions.</param>
+    /// <param name="foldedTerms">All must appear in the file (folded: lowercase, accent-free).</param>
+    /// <param name="passwordFor">Password for encrypted archives (null if none).</param>
+    /// <param name="progress">Number of files checked / total.</param>
     public static Result Filter(SearchIndex index, int[] hits, IReadOnlyList<string> foldedTerms, Func<ArchiveRecord, string?> passwordFor,
         IProgress<(int Done, int Total)>? progress, CancellationToken ct)
     {
@@ -67,7 +67,7 @@ public static class ContentSearch
         var matched = new ConcurrentBag<int>();
         int done = 0, failed = 0;
         progress?.Report((0, candidates));
-        // Aynı diskte çok sayıda paralel okuma (özellikle HDD) yavaşlatır: az sayıda arşiv aynı anda.
+        // Many parallel reads on the same disk (especially an HDD) slow things down: only a few archives at a time.
         Parallel.ForEach(byArchive, new ParallelOptions { MaxDegreeOfParallelism = 2, CancellationToken = ct }, kv =>
         {
             var rec = index.Archives[kv.Key];
@@ -88,7 +88,7 @@ public static class ContentSearch
             catch (Exception ex)
             {
                 Interlocked.Add(ref failed, paths.Count);
-                Log.Warn($"İçerik araması: {rec.DisplayPath} okunamadı", ex);
+                Log.Warn($"Content search: could not read {rec.DisplayPath}", ex);
             }
         });
 
@@ -104,7 +104,7 @@ public static class ContentSearch
         return true;
     }
 
-    /// <summary>Dosyanın düz metni: Office belgelerinde XML'den, diğerlerinde kodlaması tahmin edilerek.</summary>
+    /// <summary>Plain text of the file: from the XML for Office documents, otherwise by guessing the encoding.</summary>
     public static string ExtractText(string name, Stream content)
     {
         string ext = Path.GetExtension(name);
@@ -147,8 +147,8 @@ public static class ContentSearch
     }
 
     /// <summary>
-    /// XML'den metin: etiketler atılır. Word bir kelimeyi birkaç parçaya bölebildiği için ("Mer" + "haba") etiketler
-    /// boşluksuz birleştirilir; sadece paragraf, satır, sekme ve hücre sonları boşluk olur.
+    /// Text from XML: tags are stripped. Because Word can split a word into several pieces ("Hel" + "lo"), the pieces are
+    /// joined without spaces; only paragraph, line, tab and cell ends become spaces.
     /// </summary>
     internal static string XmlText(string xml)
     {
@@ -173,7 +173,7 @@ public static class ContentSearch
         return WebUtility.HtmlDecode(sb.ToString());
     }
 
-    /// <summary>BOM varsa ona göre; yoksa geçerli UTF-8 ise UTF-8, değilse sistemin eski kod sayfası (Türkçede Windows-1254).</summary>
+    /// <summary>By the BOM if there is one; otherwise UTF-8 if valid UTF-8, else the system's legacy code page (Windows-1254 for Turkish).</summary>
     public static string DecodeText(byte[] b)
     {
         if (b.Length >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) return Encoding.UTF8.GetString(b, 3, b.Length - 3);

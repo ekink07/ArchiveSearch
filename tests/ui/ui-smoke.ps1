@@ -1,6 +1,6 @@
-﻿# Arşiv Ara arayüz duman testi: derlenmiş uygulamayı geçici bir veri klasörüyle başlatır ve UI Automation ile
-# (klavye/fare kullanmadan, odak çalmadan) ana işlevleri dener. Çıkış kodu = başarısız denetim sayısı.
-#   pwsh tests/ui/ui-smoke.ps1 [-Exe <ArsivAra.exe>] [-Screenshots <klasör>]
+﻿# Arşiv Ara UI smoke test: starts the built app with a temporary data folder and exercises the main features
+# through UI Automation (no keyboard or mouse, without stealing focus). Exit code = number of failed checks.
+#   pwsh tests/ui/ui-smoke.ps1 [-Exe <ArsivAra.exe>] [-Screenshots <folder>]
 param(
   [string]$Exe = (Join-Path $PSScriptRoot '..\..\src\ArsivAra.App\bin\Release\net10.0-windows\ArsivAra.exe'),
   [string]$Screenshots
@@ -21,7 +21,8 @@ public static class UiWin {
 }
 "@
 [UiWin]::SetProcessDPIAware() | Out-Null
-# Test klavye kullanmaz; pencere yine de öne gelirse odak hemen kullanıcının penceresine geri verilir (yazdıkları uygulamaya gitmesin).
+# The test never types; if the window still comes to the front, focus goes straight back to the user's window
+# so that whatever they are typing does not end up in the app.
 $script:userWindow = [UiWin]::GetForegroundWindow()
 function Give-Back-Focus {
   $fg = [UiWin]::GetForegroundWindow(); [uint32]$fgPid = 0; [UiWin]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null
@@ -33,13 +34,14 @@ $Exe = (Resolve-Path $Exe).Path
 $fixtures = (Resolve-Path (Join-Path $PSScriptRoot '..\ArsivAra.Core.Tests\Fixtures')).Path
 $data = Join-Path ([IO.Path]::GetTempPath()) ('arsivara-ui-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $data | Out-Null
-'{ "Language": "tr", "ShowPreview": false, "IconSize": 16 }' | Set-Content (Join-Path $data 'settings.json') -Encoding utf8
+# No language in the settings: a first start must come up in English.
+'{ "ShowPreview": false, "IconSize": 16 }' | Set-Content (Join-Path $data 'settings.json') -Encoding utf8
 $env:ARSIVARA_DATA = $data
 
 $script:pass = 0; $script:fail = 0
 function Check([bool]$ok, [string]$what) {
   if ($ok) { $script:pass++; Write-Host "  OK   $what" -ForegroundColor Green }
-  else { $script:fail++; Write-Host "  HATA $what" -ForegroundColor Red }
+  else { $script:fail++; Write-Host "  FAIL $what" -ForegroundColor Red }
 }
 $AE = [Windows.Automation.AutomationElement]
 function Cond($prop, $value) { New-Object Windows.Automation.PropertyCondition ($prop, $value) }
@@ -58,7 +60,7 @@ function TextOf($root, [string]$id) { $e = Find $root $id 3; if ($e) { $e.Curren
 function Invoke($root, [string]$id) { (Find $root $id).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke() }
 function Search($root, [string]$text) { (Find $root 'SearchBox').GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($text) }
 function Window([string]$title, [int]$seconds = 10, $parent = $null) {
-  # Sahipli iletişim kutuları UIA ağacında masaüstünün değil sahip pencerenin çocuğu olarak görünür.
+  # Owned dialogs appear in the UIA tree as children of their owner window, not of the desktop.
   $c = Cond $AE::NameProperty $title
   $w = Wait-For {
     $x = $AE::RootElement.FindFirst([Windows.Automation.TreeScope]::Children, $c)
@@ -88,8 +90,8 @@ function Start-App([string[]]$files) {
   $quoted = $files | ForEach-Object { "`"$_`"" }
   $p = if ($quoted) { Start-Process $Exe -ArgumentList $quoted -PassThru } else { Start-Process $Exe -PassThru }
   $h = Wait-For { $p.Refresh(); if ($p.MainWindowHandle -ne 0) { $p.MainWindowHandle } } 20
-  if (-not $h) { throw 'Ana pencere açılmadı' }
-  [UiWin]::SetWindowPos($h, [IntPtr](-1), 40, 40, 1194, 727, 0x10) | Out-Null # en üstte, etkinleştirmeden
+  if (-not $h) { throw 'The main window did not open' }
+  [UiWin]::SetWindowPos($h, [IntPtr](-1), 40, 40, 1194, 727, 0x10) | Out-Null # topmost, without activating
   Give-Back-Focus
   return @{ Process = $p; Handle = $h; Root = $AE::FromHandle($h) }
 }
@@ -97,130 +99,131 @@ function Start-App([string[]]$files) {
 $archives = 'zip-utf8.zip', '7z-solid.7z', 'ic-ice.zip', 'rar5-sifreli-baslik.rar', 'joliet.iso', 'kaynak.tar.gz' |
   ForEach-Object { Join-Path $fixtures $_ }
 
-Write-Host "Arşiv Ara UI duman testi`n  exe: $Exe`n  veri: $data"
+Write-Host "Arşiv Ara UI smoke test`n  exe:  $Exe`n  data: $data"
 $app = Start-App $archives
 $root = $app.Root
 try {
-  Write-Host '- Açılış, logo ve imza'
-  Check ([bool](Wait-For { (TextOf $root 'LibraryStatus') -match '^6 arşiv' } 30)) "6 arşiv eklendi ($(TextOf $root 'LibraryStatus'))"
-  Check ([bool](Find $root 'BrandLogo')) 'Üst çubukta logo var'
+  Write-Host '- Start-up, logo and credit (English by default)'
+  Check ([bool](Wait-For { (TextOf $root 'LibraryStatus') -match '^6 archives' } 30)) "6 archives added ($(TextOf $root 'LibraryStatus'))"
+  Check ([bool](Find $root 'BrandLogo')) 'Logo in the top bar'
   $credit = Find $root 'CreditLink'
-  Check ($credit -and $credit.Current.Name -eq 'Created By MaledictusMaggot®') 'Durum satırında "Created By MaledictusMaggot®" imzası'
+  Check ($credit -and $credit.Current.Name -eq 'Created By MaledictusMaggot®') 'Credit "Created By MaledictusMaggot®" in the status bar'
+  Check ((Find $root 'SearchBox').Current.Name -eq 'Search inside archives…') 'First start is in English'
   $archiveList = Find $root 'ArchiveList'
   $texts = $archiveList.FindAll([Windows.Automation.TreeScope]::Descendants, (Cond $AE::ControlTypeProperty ([Windows.Automation.ControlType]::Text))) | ForEach-Object { $_.Current.Name }
-  Check ([bool]($texts | Where-Object { $_ -like '*Şifreli*' })) 'Başlığı şifreli RAR "Şifreli: parola" olarak görünüyor'
-  Check ([bool]($texts | Where-Object { $_ -like '*3 iç arşiv*' })) 'İç içe arşivler sayıldı (ic-ice.zip: 3 iç arşiv)'
-  Snap $app.Handle 'ana-liste'
+  Check ([bool]($texts | Where-Object { $_ -like '*Encrypted*' })) 'RAR with encrypted headers is shown as "Encrypted"'
+  Check ([bool]($texts | Where-Object { $_ -like '*3 nested*' })) 'Nested archives counted (ic-ice.zip: 3 nested)'
+  Snap $app.Handle 'main-list'
 
-  Write-Host '- Arama dili'
+  Write-Host '- Search syntax'
   Search $root 'sirket'
-  Check ([bool](Wait-For { (ResultCount $root) -eq 7 } 10)) "sirket → 7 sonuç (iç içe ve ISO dahil): $(TextOf $root 'ResultStatus')"
-  Search $root 'sirket|sozlesme arsiv:zip'
-  Check ([bool](Wait-For { (ResultCount $root) -eq 8 } 10)) "VEYA + arsiv: → 8 sonuç: $(TextOf $root 'ResultStatus')"
+  Check ([bool](Wait-For { (ResultCount $root) -eq 7 } 10)) "sirket -> 7 results (nested and ISO included): $(TextOf $root 'ResultStatus')"
+  Search $root 'sirket|sozlesme archive:zip'
+  Check ([bool](Wait-For { (ResultCount $root) -eq 8 } 10)) "OR + archive: -> 8 results: $(TextOf $root 'ResultStatus')"
   Search $root '*.png !istanbul'
-  Check ([bool](Wait-For { (ResultCount $root) -eq 0 } 10)) "Joker + DEĞİL → 0 sonuç: $(TextOf $root 'ResultStatus')"
-  Search $root 'boyut:>40kb'
-  Check ([bool](Wait-For { (ResultCount $root) -eq 10 } 10)) "boyut:>40kb → 10 sonuç (7 rastgele.bin + 3 iç arşiv): $(TextOf $root 'ResultStatus')"
-  Search $root 'boyut:abc'
-  Check ([bool](Wait-For { (TextOf $root 'ResultStatus') -like 'Geçersiz boyut*' } 10)) "Geçersiz değer durum satırında açıklanıyor"
+  Check ([bool](Wait-For { (ResultCount $root) -eq 0 } 10)) "Wildcard + NOT -> 0 results: $(TextOf $root 'ResultStatus')"
+  Search $root 'size:>40kb'
+  Check ([bool](Wait-For { (ResultCount $root) -eq 10 } 10)) "size:>40kb -> 10 results (7 rastgele.bin + 3 nested archives): $(TextOf $root 'ResultStatus')"
+  Search $root 'size:abc'
+  Check ([bool](Wait-For { (TextOf $root 'ResultStatus') -like 'Invalid size*' } 10)) 'An invalid value is explained in the status bar'
 
-  Write-Host '- Sıralama ve önizleme'
-  Search $root 'okubeni|rastgele dosya:'
+  Write-Host '- Sorting and preview'
+  Search $root 'okubeni|rastgele file:'
   Wait-For { (ResultCount $root) -gt 0 } 10 | Out-Null
   Invoke $root 'SortSize'
-  Check ([bool](Wait-For { (FirstResult $root).Current.Name -eq 'rastgele.bin' } 10)) 'Boyut başlığına tıklayınca büyükten küçüğe sıralandı'
+  Check ([bool](Wait-For { (FirstResult $root).Current.Name -eq 'rastgele.bin' } 10)) 'Clicking the Size header sorts largest first'
   Invoke $root 'PreviewButton'
-  Search $root 'ad:="Sözleşme.txt" arsiv:zip-utf8'
+  Search $root 'name:="Sözleşme.txt" archive:zip-utf8'
   Wait-For { (ResultCount $root) -eq 1 } 10 | Out-Null
   (FirstResult $root).GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
-  Check ([bool](Wait-For { (TextOf $root 'PreviewTitle') -eq 'Sözleşme.txt' } 10)) 'Önizleme seçili dosyanın adını gösteriyor'
-  Check ([bool](Wait-For { (Find $root 'PreviewText' 2).GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value -like '*İSTANBUL şubesi*' } 10)) 'Önizleme metin içeriğini gösteriyor'
-  Snap $app.Handle 'onizleme'
+  Check ([bool](Wait-For { (TextOf $root 'PreviewTitle') -eq 'Sözleşme.txt' } 10)) 'Preview shows the selected file name'
+  Check ([bool](Wait-For { (Find $root 'PreviewText' 2).GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value -like '*İSTANBUL şubesi*' } 10)) 'Preview shows the text content'
+  Snap $app.Handle 'preview'
 
-  Write-Host '- Kareli görünüm'
+  Write-Host '- Grid view'
   Invoke $root 'PreviewButton'
   Search $root ''
   Invoke $root 'GridViewButton'
-  Check ([bool](Wait-For { (Find $root 'ResultsGrid' 2).Current.IsOffscreen -eq $false } 5)) 'Kareli görünüme geçildi'
-  Snap $app.Handle 'kareli'
+  Check ([bool](Wait-For { (Find $root 'ResultsGrid' 2).Current.IsOffscreen -eq $false } 5)) 'Switched to the grid view'
+  Snap $app.Handle 'grid'
   Invoke $root 'ListViewButton'
-  Check ([bool](Wait-For { (Find $root 'Results' 2).Current.IsOffscreen -eq $false } 5)) 'Listeye geri dönüldü'
+  Check ([bool](Wait-For { (Find $root 'Results' 2).Current.IsOffscreen -eq $false } 5)) 'Back to the list'
   Invoke $root 'PreviewButton'
 
-  Write-Host '- İçerik araması, sürümler, kopyalar'
-  Search $root 'icerik:zumrut'
-  Check ([bool](Wait-For { (TextOf $root 'ResultStatus') -match '^7 sonuç · ' } 20)) "icerik:zumrut → 7 dosya: $(TextOf $root 'ResultStatus')"
-  Search $root 'ad:="Şirket Raporu 2023.txt" dosya:'
-  Check ([bool](Wait-For { (ResultCount $root) -eq 7 } 10)) "Aynı adlı sürümler → 7"
-  Search $root 'kopya: okubeni'
-  Check ([bool](Wait-For { (ResultCount $root) -ge 7 } 10)) "kopya: → $(ResultCount $root) kopya"
+  Write-Host '- Content search, versions, duplicates'
+  Search $root 'content:zumrut'
+  Check ([bool](Wait-For { (TextOf $root 'ResultStatus') -match '^7 results · ' } 20)) "content:zumrut -> 7 files: $(TextOf $root 'ResultStatus')"
+  Search $root 'name:="Şirket Raporu 2023.txt" file:'
+  Check ([bool](Wait-For { (ResultCount $root) -eq 7 } 10)) 'Versions with the same name -> 7'
+  Search $root 'dupe: okubeni'
+  Check ([bool](Wait-For { (ResultCount $root) -ge 7 } 10)) "dupe: -> $(ResultCount $root) copies"
 
-  Write-Host '- Dil değiştirme (Ayarlar)'
+  Write-Host '- Switching the language (Settings)'
   Invoke $root 'SettingsButton'
-  $settings = Window 'Ayarlar'
-  Check ([bool]$settings) 'Ayarlar penceresi açıldı'
-  Snap ([IntPtr]$settings.Current.NativeWindowHandle) 'ayarlar'
+  $settings = Window 'Settings'
+  Check ([bool]$settings) 'Settings window opened'
+  Snap ([IntPtr]$settings.Current.NativeWindowHandle) 'settings'
   $combo = Find $settings 'LanguageBox'
   $combo.GetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-  $english = Wait-For { $combo.FindFirst([Windows.Automation.TreeScope]::Descendants, (Cond $AE::NameProperty 'English')) } 5
-  $english.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
+  $turkish = Wait-For { $combo.FindFirst([Windows.Automation.TreeScope]::Descendants, (Cond $AE::NameProperty 'Türkçe')) } 5
+  $turkish.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
   $combo.GetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern).Collapse()
-  Check ([bool](Wait-For { $settings.Current.Name -eq 'Settings' } 5)) 'Ayarlar penceresi anında İngilizceye geçti'
+  Check ([bool](Wait-For { $settings.Current.Name -eq 'Ayarlar' } 5)) 'Settings window switched to Turkish immediately'
   Invoke $settings 'SettingsClose'
-  Check ([bool](Wait-For { (Find $root 'SearchBox').Current.Name -eq 'Search inside archives…' } 5)) 'Ana pencere İngilizce (arama kutusu)'
-  Check ((TextOf $root 'LibraryStatus') -notmatch 'arşiv') "Durum satırında Türkçe kalıntı yok ($(TextOf $root 'LibraryStatus'))"
-  Check ((Find $root 'SortName').Current.Name -eq 'Name') 'Sütun başlıkları İngilizce'
-  Snap $app.Handle 'ingilizce'
+  Check ([bool](Wait-For { (Find $root 'SearchBox').Current.Name -eq 'Arşivlerin içinde ara…' } 5)) 'Main window in Turkish (search box)'
+  Check ((TextOf $root 'LibraryStatus') -notmatch 'archives') "No English leftovers in the status bar ($(TextOf $root 'LibraryStatus'))"
+  Check ((Find $root 'SortName').Current.Name -eq 'Ad') 'Column headers in Turkish'
+  Snap $app.Handle 'turkish'
 
-  Write-Host '- Hakkında'
+  Write-Host '- About and license'
   Invoke $root 'CreditLink'
-  $about = Window 'About Arşiv Ara'
-  Check ([bool]$about) 'İmzaya tıklayınca Hakkında açıldı'
+  $about = Window 'Arşiv Ara hakkında'
+  Check ([bool]$about) 'Clicking the credit opens About'
   if ($about) {
-    Check ((TextOf $about 'AboutCredit') -like '*MaledictusMaggot®*') 'Hakkında: Created By MaledictusMaggot®'
-    Check ((TextOf $about 'AboutVersion') -match '^Version \d') "Hakkında: $(TextOf $about 'AboutVersion')"
-    Check ((TextOf $about 'AboutManufacturer') -eq 'Publisher: Verlora Studios') "Hakkında: $(TextOf $about 'AboutManufacturer')"
-    Check ((TextOf $about 'AboutLicenseKind') -eq 'MIT') 'Hakkında: Lisans bölümü (MIT)'
-    Check ((TextOf $about 'AboutCopyright') -like 'Copyright © 20*') "Hakkında: $(TextOf $about 'AboutCopyright')"
-    Snap ([IntPtr]$about.Current.NativeWindowHandle) 'hakkinda'
+    Check ((TextOf $about 'AboutCredit') -like '*MaledictusMaggot®*') 'About: Created By MaledictusMaggot®'
+    Check ((TextOf $about 'AboutVersion') -match '^Sürüm \d') "About: $(TextOf $about 'AboutVersion')"
+    Check ((TextOf $about 'AboutManufacturer') -eq 'Üretici: Verlora Studios') "About: $(TextOf $about 'AboutManufacturer')"
+    Check ((TextOf $about 'AboutLicenseKind') -eq 'MIT') 'About: license section (MIT)'
+    Check ((TextOf $about 'AboutCopyright') -like 'Copyright © 20*MaledictusMaggot') "About: $(TextOf $about 'AboutCopyright')"
+    Snap ([IntPtr]$about.Current.NativeWindowHandle) 'about'
 
     Invoke $about 'AboutLicenseButton'
-    $license = Window 'Arşiv Ara license' 10 $about
-    Check ([bool]$license) 'Lisans metni penceresi açıldı'
+    $license = Window 'Arşiv Ara lisansı' 10 $about
+    Check ([bool]$license) 'License text window opened'
     if ($license) {
       $text = (Find $license 'LicenseText').GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value
-      Check ($text -like 'MIT License*Permission is hereby granted*') 'Lisans: LICENSE metninin tamamı gösteriliyor'
-      Check ((TextOf $license 'LicenseSubtitle') -like '*Verlora Studios*') "Lisans: $(TextOf $license 'LicenseSubtitle')"
+      Check ($text -like 'MIT License*MaledictusMaggot*Permission is hereby granted*') 'License: full LICENSE text'
+      Check ((TextOf $license 'LicenseSubtitle') -like '*Verlora Studios*') "License: $(TextOf $license 'LicenseSubtitle')"
       (Find $license 'NoticesTab').GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
       $notices = Wait-For { (Find $license 'NoticesText' 2).GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value } 5
-      Check ($notices -like '*SharpCompress*') 'Lisans: üçüncü taraf bileşenler sekmesi'
-      Snap ([IntPtr]$license.Current.NativeWindowHandle) 'lisans'
+      Check ($notices -like '*SharpCompress*UnRAR source code may be used*') 'License: third-party components tab'
+      Snap ([IntPtr]$license.Current.NativeWindowHandle) 'license'
       Invoke $license 'LicenseClose'
-      Check ([bool](Wait-For { -not (Window 'Arşiv Ara license' 1 $about) } 5)) 'Lisans penceresi kapandı'
+      Check ([bool](Wait-For { -not (Window 'Arşiv Ara lisansı' 1 $about) } 5)) 'License window closed'
     }
     Invoke $about 'AboutOk'
-    Check ([bool](Wait-For { -not (Window 'About Arşiv Ara' 1) } 5)) 'Hakkında kapandı'
+    Check ([bool](Wait-For { -not (Window 'Arşiv Ara hakkında' 1) } 5)) 'About closed'
   }
 
-  Write-Host '- Tek örnek: ikinci açılış dosyayı açık olana iletir'
+  Write-Host '- Single instance: a second start passes the file to the running window'
   $second = Start-Process $Exe -ArgumentList "`"$(Join-Path $fixtures 'kaynak.tar.bz2')`"" -PassThru
-  Check ($second.WaitForExit(10000)) 'İkinci süreç hemen kapandı'
-  Check ([bool](Wait-For { (TextOf $root 'LibraryStatus') -match '^7 archives' } 20)) "Dosya açık olan pencereye eklendi ($(TextOf $root 'LibraryStatus'))"
+  Check ($second.WaitForExit(10000)) 'The second process exited right away'
+  Check ([bool](Wait-For { (TextOf $root 'LibraryStatus') -match '^7 arşiv' } 20)) "The file was added to the running window ($(TextOf $root 'LibraryStatus'))"
 
-  Write-Host '- Kapatma ve kalıcılık'
+  Write-Host '- Closing and persistence'
   $root.GetCurrentPattern([Windows.Automation.WindowPattern]::Pattern).Close()
-  Check ($app.Process.WaitForExit(10000)) 'Program kapandı'
+  Check ($app.Process.WaitForExit(10000)) 'The program closed'
   $app = Start-App @()
   $root = $app.Root
-  Check ([bool](Wait-For { (TextOf $root 'LibraryStatus') -match '^7 archives' } 20)) "Yeniden açılışta kütüphane ve dil korundu ($(TextOf $root 'LibraryStatus'))"
-  Check (Test-Path (Join-Path $data 'index.bin')) 'index.bin veri klasöründe'
-  Check (-not (Test-Path (Join-Path (Split-Path $Exe) 'ArsivAra-veri'))) "exe'nin yanına ArsivAra-veri klasörü açılmadı"
-  Check (Test-Path (Join-Path $data 'gunluk')) 'Günlük klasörü oluştu'
+  Check ([bool](Wait-For { (TextOf $root 'LibraryStatus') -match '^7 arşiv' } 20)) "Library and language kept after restart ($(TextOf $root 'LibraryStatus'))"
+  Check (Test-Path (Join-Path $data 'index.bin')) 'index.bin is in the data folder'
+  Check (-not (Test-Path (Join-Path (Split-Path $Exe) 'ArsivAra-veri'))) 'No ArsivAra-veri folder was created next to the exe'
+  Check (Test-Path (Join-Path $data 'gunluk')) 'The log folder was created'
 }
 finally {
   if ($app -and -not $app.Process.HasExited) { $app.Process.Kill() }
-  Get-Process ArsivAra -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $Exe } | Stop-Process -Force # yarıda kalan test örnekleri
+  Get-Process ArsivAra -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $Exe } | Stop-Process -Force # leftover test instances
   Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
 }
-Write-Host "`nSonuç: $script:pass başarılı, $script:fail başarısız"
+Write-Host "`nResult: $script:pass passed, $script:fail failed"
 exit $script:fail

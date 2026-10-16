@@ -40,23 +40,23 @@ public class IsoReaderTests
         Assert.Equal(Fx.Files["okubeni.txt"], ms.ToArray());
     }
 
-    /// <summary>Elle kurulmuş en küçük ISO 9660 görüntüsü: Rock Ridge "NM" kaydıyla uzun ad.</summary>
+    /// <summary>A minimal hand-built ISO 9660 image: a long name via a Rock Ridge "NM" entry.</summary>
     [Fact]
     public void Rock_ridge_alternate_names()
     {
         const int S = 2048;
         var img = new byte[S * 20];
-        // Birincil birim tanımlayıcısı (sektör 16)
+        // Primary volume descriptor (sector 16)
         var pvd = img.AsSpan(16 * S, S);
         pvd[0] = 1;
         Encoding.ASCII.GetBytes("CD001").CopyTo(pvd[1..]);
         pvd[6] = 1;
         BitConverter.GetBytes((ushort)S).CopyTo(pvd[128..]);
-        WriteRecord(pvd[156..], extent: 18, size: S, flags: 2, name: [0], nm: null); // kök
+        WriteRecord(pvd[156..], extent: 18, size: S, flags: 2, name: [0], nm: null); // root
         img[17 * S] = 255;
         Encoding.ASCII.GetBytes("CD001").CopyTo(img.AsSpan(17 * S + 1));
 
-        // Kök klasör (sektör 18): ".", "..", bir dosya
+        // Root folder (sector 18): ".", "..", one file
         var dir = img.AsSpan(18 * S, S);
         int p = WriteRecord(dir, 18, S, 2, [0], null);
         p += WriteRecord(dir[p..], 18, S, 2, [1], null);

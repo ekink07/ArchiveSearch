@@ -1,6 +1,6 @@
 namespace ArsivAra.Core.Tests;
 
-[Collection("Parolalar")] // küçük resim okuyucusu PasswordStore'a bakar; parola testiyle aynı anda çalışmasın
+[Collection("Parolalar")] // the thumbnail reader consults PasswordStore; must not run at the same time as the password test
 public class ExtractorTests
 {
     static string CopyWithZone(string fixture, int zone)
@@ -50,7 +50,7 @@ public class ExtractorTests
         var rec = Fx.Read("7z-solid.7z");
         var entry = rec.Entries.Single(e => e.Path == "Belgeler/Şirket Raporu 2023.txt");
         string first = ArchiveExtractor.ExtractToTemp(rec, entry);
-        using (new FileStream(first, FileMode.Open, FileAccess.Read, FileShare.None)) // başka bir programda açık gibi
+        using (new FileStream(first, FileMode.Open, FileAccess.Read, FileShare.None)) // as if it were open in another program
         {
             string second = ArchiveExtractor.ExtractToTemp(rec, entry);
             Assert.Equal(first, second);
@@ -64,7 +64,7 @@ public class ExtractorTests
         string dest = Fx.TempDir();
         var map = Fx.Files.Keys.ToDictionary(k => k, k => k);
         Assert.Equal(4, ArchiveExtractor.ExtractGroup(rec, map, dest, null));
-        Assert.Equal(4, ArchiveExtractor.ExtractGroup(rec, map, dest, null)); // ikinci kez: "ad (2)"
+        Assert.Equal(4, ArchiveExtractor.ExtractGroup(rec, map, dest, null)); // second time: "name (2)"
         Assert.Equal(Fx.Files["Veri/rastgele.bin"], File.ReadAllBytes(Path.Combine(dest, "Veri", "rastgele.bin")));
         Assert.True(File.Exists(Path.Combine(dest, "Veri", "rastgele (2).bin")));
         Assert.Empty(Directory.GetFiles(dest, "*.part", SearchOption.AllDirectories));
@@ -101,8 +101,8 @@ public class ExtractorTests
         Assert.NotNull(reader.Read(Fx.Read("rar5-qo.rar"), Fx.Png, 1 << 20));
         var nested = Fx.Read("ic-ice.zip").Nested.Single(n => n.InnerPath == "arsivler/ic.zip");
         Assert.NotNull(reader.Read(nested, Fx.Png, 1 << 20));
-        Assert.Null(reader.Read(Fx.Read("7z-solid.7z"), Fx.Png, 1 << 20));   // solid: önce her şeyi açmak gerekir
-        Assert.Null(reader.Read(Fx.Read("zip-utf8.zip"), "Veri/rastgele.bin", 1024)); // sınırdan büyük
+        Assert.Null(reader.Read(Fx.Read("7z-solid.7z"), Fx.Png, 1 << 20));   // solid: everything would have to be decompressed first
+        Assert.Null(reader.Read(Fx.Read("zip-utf8.zip"), "Veri/rastgele.bin", 1024)); // larger than the limit
     }
 
     [Fact]

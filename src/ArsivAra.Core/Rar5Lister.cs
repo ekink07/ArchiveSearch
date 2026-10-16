@@ -3,15 +3,15 @@ using System.Text;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// RAR5 arşivlerinin dosya listesini "Quick Open" (QO) kaydını kullanarak okur.
+/// Reads the file list of RAR5 archives using the "Quick Open" (QO) record.
 ///
-/// RAR'da her dosyanın başlığı kendi verisinin önündedir; listelemek için her girdide dosyanın içinde
-/// ileri atlamak (seek) gerekir. USB HDD'de bu girdi başına ~5 ms demektir (22 bin girdilik bir yedek ≈ 2 dk).
-/// WinRAR, arşivin sonuna başlıkların birebir kopyalarını tek blokta yazar (QO). Burada QO tek okumayla alınır,
-/// önbellekte olmayan başlıklar ise 64 KB'lık okuma penceresinden okunur (art arda küçük dosyalar aynı pencereye düşer).
+/// In RAR each file's header sits in front of its own data; listing requires seeking forward
+/// through the file for every entry. On a USB HDD that is ~5 ms per entry (a backup with 22k entries ≈ 2 min).
+/// WinRAR writes exact copies of the headers in a single block at the end of the archive (QO). Here QO is fetched in one read,
+/// and headers not in the cache are read from a 64 KB read window (consecutive small files fall into the same window).
 ///
-/// Biçim: https://www.rarlab.com/technote.htm (RAR 5.0 archive format). Desteklenmeyen/tutarsız bir durumda
-/// null döner ve çağıran SharpCompress'e geri düşer.
+/// Format: https://www.rarlab.com/technote.htm (RAR 5.0 archive format). In an unsupported/inconsistent case
+/// it returns null and the caller falls back to SharpCompress.
 /// </summary>
 public static class Rar5Lister
 {
@@ -21,13 +21,13 @@ public static class Rar5Lister
     const ulong HflExtra = 0x1, HflData = 0x2, HflSplitBefore = 0x8;
     const int WindowSize = 64 * 1024;
 
-    /// <summary>Teşhis: son listelemede okunan gerçek disk bölgesi sayısı ve QO'dan karşılanan başlık sayısı.</summary>
+    /// <summary>Diagnostics: number of actual disk regions read and number of headers served from QO in the last listing.</summary>
     [ThreadStatic] public static int LastDiskReads, LastCacheHits;
 
-    /// <summary>RAR5 değilse ya da QO kaydı yoksa/okunamazsa null.</summary>
+    /// <summary>Null if not RAR5, or if the QO record is missing/unreadable.</summary>
     public static ArchiveEntry[]? TryList(Stream stream) => TryList(stream, out _);
 
-    /// <param name="solid">Arşiv solid mi (bir dosyaya ulaşmak öncekileri açmayı gerektirir).</param>
+    /// <param name="solid">Whether the archive is solid (reaching a file requires decompressing the ones before it).</param>
     public static ArchiveEntry[]? TryList(Stream stream, out bool solid)
     {
         solid = false;
@@ -38,10 +38,10 @@ public static class Rar5Lister
         long mainPos = 8;
         if (!ReadBlock(src, mainPos, out var main) || main.Type != HeadMain) return null;
 
-        // Ana başlık: archive flags, [volume number], extra (Locator).
+        // Main header: archive flags, [volume number], extra (Locator).
         var p = new Reader(main.Body);
         ulong archiveFlags = p.VInt();
-        if ((archiveFlags & 0x1) != 0) return null; // çok parçalı: QO sadece bu parçayı kapsar, tüm parçalar SharpCompress ile okunur
+        if ((archiveFlags & 0x1) != 0) return null; // multi-volume: QO covers only this part, all parts are read with SharpCompress
         solid = (archiveFlags & 0x4) != 0;
         if ((archiveFlags & 0x2) != 0) p.VInt();
         long qoOffset = 0;
@@ -52,7 +52,7 @@ public static class Rar5Lister
             ulong lflags = r.VInt();
             if ((lflags & 0x1) != 0) qoOffset = (long)r.VInt();
         }
-        if (qoOffset <= 0) return null; // QO yok: bu yol kazanç getirmez, SharpCompress okusun
+        if (qoOffset <= 0) return null; // no QO: this path gains nothing, let SharpCompress read it
 
         long qoPos = mainPos + qoOffset;
         if (!LoadQuickOpen(src, qoPos)) return null;
@@ -61,10 +61,10 @@ public static class Rar5Lister
         long pos = main.NextPos;
         while (true)
         {
-            if (pos == qoPos) break; // tüm dosya başlıkları QO'dan önce gelir
+            if (pos == qoPos) break; // all file headers come before QO
             if (!ReadBlock(src, pos, out var b)) return null;
             if (b.Type == HeadEnd) break;
-            if (b.Type == HeadCrypt) return null; // başlıklar şifreli
+            if (b.Type == HeadCrypt) return null; // headers are encrypted
             if (b.Type == HeadFile && (b.Flags & HflSplitBefore) == 0)
                 result.Add(ParseFile(b));
             pos = b.NextPos;
@@ -83,7 +83,7 @@ public static class Rar5Lister
         long mtimeTicks = 0;
         uint crc = 0;
         if ((fileFlags & 0x2) != 0) mtimeTicks = UnixToTicks(r.UInt32());
-        if ((fileFlags & 0x4) != 0) crc = r.UInt32(); // içeriğin CRC32'si
+        if ((fileFlags & 0x4) != 0) crc = r.UInt32(); // CRC32 of the contents
         r.VInt(); // compression info
         r.VInt(); // host OS
         int nameLen = (int)r.VInt();
@@ -152,13 +152,13 @@ public static class Rar5Lister
         return true;
     }
 
-    // ---- Blok okuma ----
+    // ---- Block reading ----
 
     readonly struct Block
     {
         public required int Type { get; init; }
         public required ulong Flags { get; init; }
-        public required byte[] Body { get; init; }   // tipe özgü alanlar + extra alanı (CRC/boyut/tip/bayrak sonrası)
+        public required byte[] Body { get; init; }   // type-specific fields + extra area (after CRC/size/type/flags)
         public required int ExtraSize { get; init; }
         public required long DataPos { get; init; }
         public required long DataSize { get; init; }
@@ -214,7 +214,7 @@ public static class Rar5Lister
         return list;
     }
 
-    // ---- Kaynak: QO önbelleği + 64 KB okuma penceresi ----
+    // ---- Source: QO cache + 64 KB read window ----
 
     sealed class Source(Stream stream)
     {
@@ -226,7 +226,7 @@ public static class Rar5Lister
 
         public void AddCache(long pos, ReadOnlyMemory<byte> data) => _cache.Add((pos, data));
 
-        /// <summary>Önbelleği konuma göre sıralar; aramalar ikili arama ile yapılır.</summary>
+        /// <summary>Sorts the cache by position; lookups use binary search.</summary>
         public void SealCache()
         {
             _cache.Sort((a, b) => a.Pos.CompareTo(b.Pos));
@@ -285,7 +285,7 @@ public static class Rar5Lister
         }
     }
 
-    // ---- Küçük yardımcılar ----
+    // ---- Small helpers ----
 
     ref struct Reader(ReadOnlySpan<byte> data)
     {
@@ -304,7 +304,7 @@ public static class Rar5Lister
                 if (shift < 64) v |= (ulong)(b & 0x7F) << shift;
                 if ((b & 0x80) == 0) return v;
             }
-            throw new InvalidDataException("vint okunamadı");
+            throw new InvalidDataException("Could not read vint");
         }
 
         public uint UInt32() { var v = BitConverter.ToUInt32(_d.Slice(_p, 4)); _p += 4; return v; }

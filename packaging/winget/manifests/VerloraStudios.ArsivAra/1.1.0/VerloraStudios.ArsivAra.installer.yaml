@@ -7,12 +7,12 @@ Commands:
 MinimumOSVersion: 10.0.17763.0
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/download/v1.1.0/ArsivAra.exe
-    # Sürüm yayınlandıktan sonra ArsivAra.exe.sha256 dosyasındaki değer:
+    InstallerUrl: https://github.com/ekink07/ArchiveSearch/releases/download/v1.1.0/ArsivAra.exe
+    # After the release is published: the value from ArsivAra.exe.sha256
     InstallerSha256: REPLACE_WITH_X64_SHA256_FROM_RELEASE
   - Architecture: arm64
-    InstallerUrl: https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/download/v1.1.0/ArsivAra-arm64.exe
-    # Sürüm yayınlandıktan sonra ArsivAra-arm64.exe.sha256 dosyasındaki değer:
+    InstallerUrl: https://github.com/ekink07/ArchiveSearch/releases/download/v1.1.0/ArsivAra-arm64.exe
+    # After the release is published: the value from ArsivAra-arm64.exe.sha256
     InstallerSha256: REPLACE_WITH_ARM64_SHA256_FROM_RELEASE
 ManifestType: installer
 ManifestVersion: 1.9.0

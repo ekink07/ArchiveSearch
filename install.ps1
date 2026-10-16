@@ -1,35 +1,35 @@
 <#
-  Arsiv Ara kurulum betigi.
+  Arsiv Ara installer.
 
-  Kurulum (tek satir):
-    irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex
+  Install (one line):
+    irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1 | iex
 
-  Seceneklerle (masaustu kisayolu / kaldirma / ayarlar ve kutuphaneyle birlikte kaldirma):
-    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Desktop
-    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Uninstall
-    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Uninstall -RemoveData
+  With options (desktop shortcut / uninstall / uninstall together with settings and library):
+    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Desktop
+    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Uninstall
+    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Uninstall -RemoveData
 
-  Islemciye uygun (x64 ya da ARM64) son surumu GitHub'dan indirir, SHA256 ile dogrular,
-  %LOCALAPPDATA%\Programs\ArsivAra icine koyar, Baslat menusune ve Ayarlar > Uygulamalar listesine ekler.
-  Yonetici yetkisi gerekmez. Uretici: Verlora Studios.
+  Downloads the latest release for this processor (x64 or ARM64) from GitHub, verifies its SHA256,
+  puts it in %LOCALAPPDATA%\Programs\ArsivAra and adds it to the Start menu and to Settings > Apps.
+  No administrator rights needed. Publisher: Verlora Studios.
 
-  Bu dosya bilerek sadece ASCII karakter icerir: Windows PowerShell 5.1 BOM'suz UTF-8'i yanlis okur,
-  "irm | iex" ise BOM'u sevmez. Turkce metinler \uXXXX kacislariyla yazilir (U fonksiyonu).
+  This file is deliberately pure ASCII: Windows PowerShell 5.1 misreads UTF-8 without a BOM, and
+  "irm | iex" does not like a BOM. Non-ASCII text is written with \uXXXX escapes (function U).
 #>
 param(
     [switch]$Desktop,
     [switch]$Uninstall,
     [switch]$RemoveData,
-    # Kurulumdan sonra programi acma (betikle toplu kurulum icin)
+    # Do not start the program after installing (for scripted installs)
     [switch]$NoStart,
-    # Sadece test ve ayna sunucular icin: GitHub API yerine kullanilacak "son surum" adresi
+    # For tests and mirrors only: the "latest release" address to use instead of the GitHub API
     [string]$ReleaseApi
 )
 
 $ErrorActionPreference = 'Stop'
 function U([string]$s) { [regex]::Unescape($s) }
 
-$Repo         = 'YOUR_GITHUB_USER/ArsivAra'
+$Repo         = 'ekink07/ArchiveSearch'
 $AppName      = U 'Ar\u015Fiv Ara'
 $Publisher    = 'Verlora Studios'
 $InstallDir   = Join-Path $env:LOCALAPPDATA 'Programs\ArsivAra'
@@ -39,13 +39,14 @@ $TempDir      = Join-Path ([IO.Path]::GetTempPath()) 'ArsivAra'
 $UninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ArsivAra'
 $StartMenu    = Join-Path ([Environment]::GetFolderPath('Programs')) "$AppName.lnk"
 $DesktopLnk   = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
-# 1.0.0 kurulumu kisayollari "s" ile yaziyordu (WScript.Shell Unicode adlari bozar); guncellemede ve kaldirmada temizlenir.
+# The 1.0.0 installer wrote the shortcut names with a plain "s" (WScript.Shell mangles Unicode names);
+# they are removed on update and uninstall.
 $LegacyLinks  = @((Join-Path ([Environment]::GetFolderPath('Programs')) 'Arsiv Ara.lnk'), (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Arsiv Ara.lnk'))
 if (-not $ReleaseApi) { $ReleaseApi = "https://api.github.com/repos/$Repo/releases/latest" }
 
-# Ayarlar > Uygulamalar'daki "Kaldir" bu betigi calistirir (internete gerek kalmadan).
+# "Uninstall" in Settings > Apps runs this script (no internet needed).
 $UninstallScript = @'
-# Arsiv Ara kaldirma betigi (install.ps1 yazdi). Ayarlar ve kutuphane de silinsin: -RemoveData
+# Arsiv Ara uninstaller (written by install.ps1). Also delete settings and library: -RemoveData
 param([switch]$RemoveData)
 $ErrorActionPreference = 'SilentlyContinue'
 $name = [regex]::Unescape('Ar\u015Fiv Ara')
@@ -76,14 +77,14 @@ if ($Uninstall) {
     if ($RemoveData) {
         foreach ($p in $DataDir, $TempDir) { if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Recurse -Force } }
     }
-    Write-Host ((U '{0} kald\u0131r\u0131ld\u0131.') -f $AppName) -ForegroundColor Green
+    Write-Host ('{0} was uninstalled.' -f $AppName) -ForegroundColor Green
     if (-not $RemoveData -and (Test-Path -LiteralPath $DataDir)) {
-        Write-Host ((U 'Ayarlar ve k\u00FCt\u00FCphane korundu: {0} (silmek i\u00E7in -RemoveData)') -f $DataDir) -ForegroundColor DarkGray
+        Write-Host ('Settings and library were kept: {0} (use -RemoveData to delete them)' -f $DataDir) -ForegroundColor DarkGray
     }
     return
 }
 
-# Islemci: Win32_Processor.Architecture 9 = x64, 12 = ARM64 (x64 PowerShell ARM64'te oykunmeyle calissa da dogru sonuc verir).
+# Processor: Win32_Processor.Architecture 9 = x64, 12 = ARM64 (correct even when x64 PowerShell runs emulated on ARM64).
 function Get-Arch {
     $cpu = $null
     try { $cpu = (Get-CimInstance Win32_Processor -ErrorAction Stop | Select-Object -First 1).Architecture } catch { }
@@ -92,16 +93,16 @@ function Get-Arch {
     return $null
 }
 
-# Kisayol, Windows'un IShellLinkW arabirimiyle yazilir: WScript.Shell ad ve yollardaki Unicode harfleri
-# (ornegin "Arsiv" yerine dogru yazilisi ya da Turkce kullanici adlari) ANSI'ye cevirip bozar.
+# Shortcuts are written through Windows' IShellLinkW interface: WScript.Shell converts names and paths to ANSI
+# and mangles Unicode letters (the app name itself, or user names with non-ASCII letters).
 function New-Shortcut([string]$Path) {
-    if (-not ('ArsivAraKisayol' -as [type])) {
+    if (-not ('ArsivAraShortcut' -as [type])) {
         Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
-public static class ArsivAraKisayol {
+public static class ArsivAraShortcut {
     [ComImport, Guid("00021401-0000-0000-C000-000000000046")] class ShellLink { }
     [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("000214F9-0000-0000-C000-000000000046")]
     interface IShellLinkW {
@@ -135,42 +136,42 @@ public static class ArsivAraKisayol {
 }
 '@
     }
-    [ArsivAraKisayol]::Create($Path, $Exe, $InstallDir, (U 'ZIP, RAR, 7z, TAR ve ISO ar\u015Fivlerinin i\u00E7inde arama'))
+    [ArsivAraShortcut]::Create($Path, $Exe, $InstallDir, 'Search inside ZIP, RAR, 7z, TAR and ISO archives')
 }
 
-# Windows PowerShell 5.1 varsayilan olarak eski TLS kullanabilir.
+# Windows PowerShell 5.1 may default to old TLS versions.
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $headers = @{ 'User-Agent' = 'ArsivAra-installer' }
 
 $arch = Get-Arch
-if (-not $arch) { throw (U '32 bit Windows desteklenmiyor; x64 ya da ARM64 gerekli.') }
+if (-not $arch) { throw '32-bit Windows is not supported; x64 or ARM64 is required.' }
 
-Write-Host (U 'Son s\u00FCr\u00FCm aran\u0131yor\u2026') -ForegroundColor Cyan
+Write-Host (U 'Looking for the latest release\u2026') -ForegroundColor Cyan
 $release = Invoke-RestMethod $ReleaseApi -Headers $headers
 $assetName = if ($arch -eq 'arm64') { 'ArsivAra-arm64.exe' } else { 'ArsivAra.exe' }
 $asset = $release.assets | Where-Object name -eq $assetName | Select-Object -First 1
 if (-not $asset -and $arch -eq 'arm64') {
-    Write-Host (U 'Bu s\u00FCr\u00FCmde ARM64 dosyas\u0131 yok; x64 s\u00FCr\u00FCm\u00FC kuruluyor (Windows \u00F6yk\u00FCnmesiyle \u00E7al\u0131\u015F\u0131r).') -ForegroundColor Yellow
+    Write-Host 'This release has no ARM64 build; installing the x64 build (it runs under Windows emulation).' -ForegroundColor Yellow
     $assetName = 'ArsivAra.exe'
     $asset = $release.assets | Where-Object name -eq $assetName | Select-Object -First 1
 }
-if (-not $asset) { throw ((U 'S\u00FCr\u00FCm {0} i\u00E7inde {1} bulunamad\u0131.') -f $release.tag_name, $assetName) }
+if (-not $asset) { throw ('Release {0} does not contain {1}.' -f $release.tag_name, $assetName) }
 $hashAsset = $release.assets | Where-Object name -eq "$assetName.sha256" | Select-Object -First 1
 $version = "$($release.tag_name)".TrimStart('v')
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) "ArsivAra-$([guid]::NewGuid().ToString('N')).exe"
 try {
-    Write-Host ((U '\u0130ndiriliyor: {0} {1} ({2}, {3} MB)') -f $AppName, $release.tag_name, $arch, [math]::Round($asset.size / 1MB, 1)) -ForegroundColor Cyan
+    Write-Host ('Downloading {0} {1} ({2}, {3} MB)' -f $AppName, $release.tag_name, $arch, [math]::Round($asset.size / 1MB, 1)) -ForegroundColor Cyan
     Invoke-WebRequest $asset.browser_download_url -OutFile $tmp -UseBasicParsing -Headers $headers
 
     if ($hashAsset) {
         $expected = ((Invoke-RestMethod $hashAsset.browser_download_url -Headers $headers) -split '\s+')[0].Trim()
         $actual = (Get-FileHash $tmp -Algorithm SHA256).Hash
-        if ($actual -ne $expected) { throw ((U 'SHA256 e\u015Fle\u015Fmedi. Beklenen {0}, inen {1}. Kurulum durduruldu.') -f $expected, $actual) }
-        Write-Host (U 'SHA256 do\u011Fruland\u0131.') -ForegroundColor DarkGray
+        if ($actual -ne $expected) { throw ('SHA256 mismatch. Expected {0}, downloaded {1}. Installation stopped.' -f $expected, $actual) }
+        Write-Host 'SHA256 verified.' -ForegroundColor DarkGray
     }
     else {
-        Write-Host (U 'Bu s\u00FCr\u00FCmde SHA256 dosyas\u0131 yok; do\u011Frulama atland\u0131.') -ForegroundColor Yellow
+        Write-Host 'This release has no SHA256 file; verification skipped.' -ForegroundColor Yellow
     }
 
     Stop-App
@@ -185,7 +186,7 @@ foreach ($p in $LegacyLinks) { if (Test-Path -LiteralPath $p) { Remove-Item -Lit
 New-Shortcut $StartMenu
 if ($Desktop) { New-Shortcut $DesktopLnk }
 
-# Ayarlar > Uygulamalar > Yuklu uygulamalar: ad, surum, uretici, simge ve kaldirma komutu
+# Settings > Apps > Installed apps: name, version, publisher, icon and uninstall command
 $uninstallPs1 = Join-Path $InstallDir 'uninstall.ps1'
 [IO.File]::WriteAllText($uninstallPs1, $UninstallScript, [Text.Encoding]::ASCII)
 $command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$uninstallPs1`""
@@ -206,7 +207,7 @@ foreach ($k in 'NoModify', 'NoRepair') { New-ItemProperty -Path $UninstallKey -N
 New-ItemProperty -Path $UninstallKey -Name 'EstimatedSize' -Value ([int]((Get-Item -LiteralPath $Exe).Length / 1KB)) -PropertyType DWord -Force | Out-Null
 
 Write-Host ''
-Write-Host ((U '{0} {1} kuruldu: {2}') -f $AppName, $version, $Exe) -ForegroundColor Green
-Write-Host ((U 'Ba\u015Flat men\u00FCs\u00FCnde "{0}" olarak bulabilirsiniz. Kald\u0131rmak i\u00E7in: Ayarlar > Uygulamalar > Y\u00FCkl\u00FC uygulamalar.') -f $AppName)
+Write-Host ('{0} {1} installed: {2}' -f $AppName, $version, $Exe) -ForegroundColor Green
+Write-Host ('Find it as "{0}" in the Start menu. To uninstall: Settings > Apps > Installed apps.' -f $AppName)
 Write-Host (U 'Verlora Studios \u00B7 Created By MaledictusMaggot\u00AE') -ForegroundColor DarkGray
 if (-not $NoStart) { Start-Process $Exe }

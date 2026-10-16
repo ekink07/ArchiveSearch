@@ -4,43 +4,43 @@ using System.IO.Enumeration;
 
 namespace ArsivAra.Core;
 
-/// <summary>Size &lt; 0 ise boyut/tarih henüz okunmadı demektir (MFT yolu; okuma aşamasında paralel doldurulur).</summary>
+/// <summary>Size &lt; 0 means size/date have not been read yet (MFT path; filled in parallel during the read phase).</summary>
 public readonly record struct FoundArchive(string Path, long Size, long MtimeUtcTicks);
 
 public readonly record struct ScanProgress(int Found, int Processed, int Reused, int Failed, string? Current);
 
-/// <summary>MFT ile taranan bir birim ve izlemeye başlanacak USN noktası (tarama başlamadan önce alınır, böylece arada değişiklik kaçmaz).</summary>
+/// <summary>A volume scanned via the MFT and the USN to start watching from (taken before the scan starts, so no change in between is missed).</summary>
 public sealed record VolumeJournal(string Root, ulong JournalId, long StartUsn);
 
 public sealed class ScanResult
 {
     public required List<ArchiveRecord> Archives { get; init; }
     public required List<VolumeJournal> Journals { get; init; }
-    /// <summary>MFT kullanılamadığı için klasör gezilerek taranan kökler.</summary>
+    /// <summary>Roots scanned by walking folders because the MFT could not be used.</summary>
     public required List<string> WalkedRoots { get; init; }
     public TimeSpan DiscoveryTime { get; init; }
-    /// <summary>Okunması 2 saniyeden uzun süren arşivler (teşhis için).</summary>
+    /// <summary>Archives that took longer than 2 seconds to read (for diagnostics).</summary>
     public required List<(string Path, double Seconds)> SlowArchives { get; init; }
     public TimeSpan TotalTime { get; init; }
 }
 
-/// <summary>Diskte arşivleri bulur ve sadece değişmiş olanları yeniden okur.</summary>
+/// <summary>Finds archives on disk and re-reads only the ones that changed.</summary>
 public static class Scanner
 {
-    // Bulut (OneDrive vb.) yer tutucu dosyaları: okumak indirmeyi tetikler, atlıyoruz.
+    // Cloud (OneDrive etc.) placeholder files: reading them triggers a download, so we skip them.
     const FileAttributes RecallOnOpen = (FileAttributes)0x40000;
     const FileAttributes RecallOnDataAccess = (FileAttributes)0x400000;
     const FileAttributes CloudOnly = FileAttributes.Offline | RecallOnOpen | RecallOnDataAccess;
 
     static readonly string[] AlwaysExcludedDirs = ["$Recycle.Bin", "System Volume Information"];
 
-    /// <summary>Döner diskte (HDD) aynı anda okunan arşiv sayısı. Fazlası kafayı dosyalar arasında gezdirir.</summary>
+    /// <summary>Number of archives read at once on a rotating disk (HDD). More makes the head jump between files.</summary>
     public static int HddReaders { get; set; } = 1;
 
-    /// <summary>SSD'de aynı anda okunan arşiv sayısı.</summary>
+    /// <summary>Number of archives read at once on an SSD.</summary>
     public static int SsdReaders { get; set; } = Math.Clamp(Environment.ProcessorCount, 2, 8);
 
-    // ---- Klasör gezerek bulma (MFT yoksa) ----
+    // ---- Discovery by walking folders (when there is no MFT) ----
 
     public static IEnumerable<FoundArchive> EnumerateArchives(string root, IReadOnlyCollection<string> excludes)
     {
@@ -49,7 +49,7 @@ public static class Scanner
             RecurseSubdirectories = true,
             IgnoreInaccessible = true,
             AttributesToSkip = 0,
-            MaxRecursionDepth = 64, // sembolik bağlantı döngülerine karşı emniyet
+            MaxRecursionDepth = 64, // safeguard against symbolic link loops
         };
 
         var excludeList = excludes.Select(e => e.TrimEnd('\\')).Where(e => e.Length > 0).ToArray();
@@ -58,8 +58,8 @@ public static class Scanner
     }
 
     /// <summary>
-    /// IgnoreInaccessible sadece "erişim engellendi"yi yutar; kilitli (paylaşım ihlali) ya da o an silinmiş
-    /// klasörler tüm taramayı düşürmesin diye her hatada o klasörü atlayıp devam eder.
+    /// IgnoreInaccessible only swallows "access denied"; so that locked (sharing violation) or just-deleted
+    /// folders do not bring down the whole scan, any error skips that folder and continues.
     /// </summary>
     sealed class TolerantEnumerator(string root, EnumerationOptions options, string[] excludes)
         : FileSystemEnumerator<FoundArchive>(root, options)
@@ -81,7 +81,7 @@ public static class Scanner
             return true;
         }
 
-        /// <summary>Junction/symlink mi? (OneDrive gibi bulut klasörleri de reparse point'tir ama hedefleri yoktur.)</summary>
+        /// <summary>Is it a junction/symlink? (Cloud folders such as OneDrive are reparse points too, but have no target.)</summary>
         static bool IsLink(string path)
         {
             try { return new DirectoryInfo(path).LinkTarget != null; }
@@ -100,7 +100,7 @@ public static class Scanner
         {
             var e = ex.TrimEnd('\\');
             if (e.Length == 0) continue;
-            // Klasör (alt klasörleriyle) ya da listeden kaldırılmış tek bir arşiv dosyası.
+            // A folder (with its subfolders) or a single archive file removed from the list.
             if (path.StartsWith(e + "\\", StringComparison.OrdinalIgnoreCase) || path.Equals(e, StringComparison.OrdinalIgnoreCase)) return true;
         }
         return false;
@@ -116,9 +116,9 @@ public static class Scanner
         return false;
     }
 
-    // ---- MFT ile bulma ----
+    // ---- Discovery via the MFT ----
 
-    /// <summary>Bu kök MFT ile taranabilir mi (NTFS, yönetici, bağlantı noktası değil)?</summary>
+    /// <summary>Can this root be scanned via the MFT (NTFS, administrator, not a reparse point)?</summary>
     public static bool CanUseMft(string root)
     {
         try
@@ -132,8 +132,8 @@ public static class Scanner
     }
 
     /// <summary>
-    /// Birimin MFT'sini okuyup verilen köklerin altındaki arşivleri bulur.
-    /// Klasör hiyerarşisi FRN → (üst FRN, ad) tablosundan kurulur; tam yollar önbelleklenir.
+    /// Reads the volume's MFT and finds the archives under the given roots.
+    /// The folder hierarchy is built from an FRN → (parent FRN, name) table; full paths are cached.
     /// </summary>
     public static List<FoundArchive> FindArchivesMft(
         NtfsVolume vol, List<string> roots, IReadOnlyCollection<string> excludes,
@@ -147,9 +147,9 @@ public static class Scanner
         {
             if ((attrs & (uint)FileAttributes.Directory) != 0) dirs[frn] = (parent, name.ToString());
             else if ((attrs & (uint)CloudOnly) == 0 && ArchiveReader.IsArchiveName(name)) files.Add((parent, name.ToString()));
-            if ((++count & 0x3FFFF) == 0) phase?.Invoke($"MFT okunuyor {vol.Root}  {count:N0} kayıt");
+            if ((++count & 0x3FFFF) == 0) phase?.Invoke($"Reading MFT {vol.Root}  {count:N0} records");
         }, ct);
-        phase?.Invoke($"MFT okundu {vol.Root} ({vol.LastEnumerationMethod})  {count:N0} kayıt, {files.Count:N0} arşiv adayı");
+        phase?.Invoke($"MFT read {vol.Root} ({vol.LastEnumerationMethod})  {count:N0} records, {files.Count:N0} archive candidates");
 
         var cache = new Dictionary<ulong, string>();
         var chain = new List<ulong>();
@@ -163,7 +163,7 @@ public static class Scanner
             for (int depth = 0; depth < 512; depth++)
             {
                 if (cache.TryGetValue(cur, out var c)) { basePath = c; break; }
-                // Kökte (kayıt 5) üst kimlik kendisini gösterir; tabloda olmayan da köke bağlanır.
+                // At the root (record 5) the parent ID points to itself; anything missing from the table is attached to the root.
                 if (!dirs.TryGetValue(cur, out var d) || d.Parent == cur) break;
                 chain.Add(cur);
                 cur = d.Parent;
@@ -188,8 +188,8 @@ public static class Scanner
     }
 
     /// <summary>
-    /// Kökleri tarar: NTFS birimlerde (yönetici olarak çalışıyorsa) MFT okunur, diğerlerinde klasörler gezilir.
-    /// Önceki indekste boyutu ve tarihi aynı olan arşivler tekrar okunmaz.
+    /// Scans the roots: on NTFS volumes (when running as administrator) the MFT is read, elsewhere folders are walked.
+    /// Archives whose size and date match the previous index are not read again.
     /// </summary>
     public static ScanResult Scan(
         IEnumerable<string> roots,
@@ -215,7 +215,7 @@ public static class Scanner
         foreach (var group in byVolume)
         {
             var groupRoots = group.ToList();
-            // Kök bir bağlantı noktasıysa (junction/symlink) MFT yolu başka birimi gösterir: gezmeye düş.
+            // If a root is a reparse point (junction/symlink), the MFT path points to another volume: fall back to walking.
             bool anyReparse = groupRoots.Any(r => r.Length > 3 && (File.GetAttributes(r) & FileAttributes.ReparsePoint) != 0);
             NtfsVolume? vol = useMft && !anyReparse ? NtfsVolume.TryOpen(group.Key) : null;
             if (vol != null)
@@ -224,15 +224,15 @@ public static class Scanner
                 {
                     try
                     {
-                        // Journal noktasını MFT okumasından ÖNCE al: okuma sırasında olan değişiklikler de izlenir.
+                        // Take the journal position BEFORE reading the MFT: changes made during the read are tracked too.
                         var j = vol.QueryJournal();
                         discovered.Add(FindArchivesMft(vol, groupRoots, excludes, phase, ct));
                         if (j is { } info) journals.Add(new VolumeJournal(vol.Root, info.JournalId, info.NextUsn));
-                        else walked.AddRange(groupRoots); // journal yoksa canlı izleme FileSystemWatcher ile
+                        else walked.AddRange(groupRoots); // no journal: live watching uses FileSystemWatcher
                         continue;
                     }
                     catch (OperationCanceledException) { throw; }
-                    catch (Exception) { /* MFT okunamadı: gezmeye düş */ }
+                    catch (Exception) { /* MFT could not be read: fall back to walking */ }
                 }
             }
             walked.AddRange(groupRoots);
@@ -253,7 +253,7 @@ public static class Scanner
     }
 
     /// <summary>
-    /// Sadece MFT ile bulma (yönetici izniyle çalışan yardımcı süreç için): arşiv yolları ve MFT ile okunamayan kökler.
+    /// MFT-only discovery (for the helper process running with administrator rights): archive paths and the roots that could not be read via the MFT.
     /// </summary>
     public static (List<string> Archives, List<string> NotScanned) DiscoverMft(IEnumerable<string> roots,
         IReadOnlyCollection<string> excludes, CancellationToken ct = default)
@@ -281,8 +281,8 @@ public static class Scanner
     }
 
     /// <summary>
-    /// Bulunan arşivleri okur. Her fiziksel disk kendi kuyruğundan okunur: HDD'de az okuyucu (kafa dosyalar arasında
-    /// gidip gelmesin), SSD'de çok okuyucu; diskler birbirini beklemez. Bulma (gezme) ile okuma da eşzamanlı ilerler.
+    /// Reads the discovered archives. Each physical disk is read from its own queue: few readers on an HDD (so the head
+    /// does not jump back and forth between files), many on an SSD; disks do not wait for each other. Discovery (walking) and reading also run concurrently.
     /// </summary>
     public static (List<ArchiveRecord> Archives, List<(string Path, double Seconds)> Slow) ReadAll(
         IEnumerable<FoundArchive> discovered,
@@ -362,7 +362,7 @@ public static class Scanner
                 double secs = Stopwatch.GetElapsedTime(t0).TotalSeconds;
                 if (secs > 2) slow.Add((f.Path, secs));
                 if (rec.Error != null) Interlocked.Increment(ref failed);
-                onRead?.Invoke(rec); // arayüz tarama bitmeden sonuç gösterebilsin
+                onRead?.Invoke(rec); // lets the UI show results before the scan finishes
             }
             results.Add(rec);
             int done = Interlocked.Increment(ref processed);

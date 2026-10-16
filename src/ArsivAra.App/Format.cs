@@ -1,6 +1,6 @@
 namespace ArsivAra.App;
 
-/// <summary>Boyut ve tarih metinleri (seçili dilin sayı ve tarih biçimiyle).</summary>
+/// <summary>Size and date text (using the selected language's number and date format).</summary>
 static class Format
 {
     public static string Size(long b) => b switch

@@ -19,7 +19,7 @@
         <Button DockPanel.Dock="Bottom" Content="{l:T Close}" IsDefault="True" IsCancel="True" MinWidth="104" Padding="16,6"
                 HorizontalAlignment="Right" Margin="0,16,0,0" Style="{DynamicResource AccentButtonStyle}"
                 AutomationProperties.AutomationId="LicenseClose" />
-        <!-- Metinler olduğu gibi (İngilizce hukuki metin); seçilip kopyalanabilir -->
+        <!-- Texts shown as-is (English legal text); they can be selected and copied -->
         <TabControl Margin="0,14,0,0">
             <TabItem Header="{l:T LicenseProgram}" AutomationProperties.AutomationId="LicenseTab">
                 <TextBox x:Name="LicenseBox" IsReadOnly="True" TextWrapping="Wrap" TextAlignment="Left" VerticalScrollBarVisibility="Auto"

@@ -11,7 +11,7 @@ using Microsoft.Win32;
 
 namespace ArsivAra.App;
 
-/// <summary>Kenar çubuğundaki bir arşiv satırı.</summary>
+/// <summary>An archive row in the sidebar.</summary>
 public sealed record ArchiveItem(string Path, string Name, string Detail, string ToolTipText, ImageSource? Icon,
     bool NeedsPassword, string RemoveLabel);
 
@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     public static readonly RoutedUICommand SaveSearchCommand = new("SaveSearch", nameof(SaveSearchCommand), typeof(MainWindow));
     public static readonly RoutedUICommand SettingsCommand = new("Settings", nameof(SettingsCommand), typeof(MainWindow));
 
-    // Ctrl+tekerlek basamakları (px). 16–32: liste, 48 ve üstü: kareli görünüm (Everything gibi).
+    // Ctrl+wheel steps (px). 16–32: list, 48 and up: grid view (like Everything).
     static readonly int[] ZoomSteps = [16, 20, 24, 32, 48, 64, 96, 128, 160, 192, 256];
     const int FirstGridSize = 48;
 
@@ -34,14 +34,14 @@ public partial class MainWindow : Window
     readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(120) };
     CancellationTokenSource? _searchCts;
     string? _selectedArchive;
-    int _busy;            // süren ekleme/tarama/çıkarma sayısı
+    int _busy;            // number of add/scan/extract operations in progress
     int _refreshPending;
-    string? _notice;      // son bilgi (canlı değişiklik, tarama sonucu); kütüphane durumunun yanında görünür
+    string? _notice;      // latest notice (live change, scan result); shown next to the library status
     bool _settingQuery;
-    string? _versionsOf;  // "tüm sürümleri" araması sürüyor
+    string? _versionsOf;  // an "all versions" search is active
     bool _dragOutActive;
 
-    // Ekrandaki sonuçlar ve seçim (iki görünüm aynı seçimi paylaşır).
+    // Results on screen and the selection (both views share the same selection).
     SearchIndex _shownIndex = SearchIndex.Empty;
     int[] _shownHits = [];
     int _iconSize;
@@ -52,7 +52,7 @@ public partial class MainWindow : Window
     SortKey _sortKey;
     bool _sortDescending;
 
-    // Explorer'a sürükleme
+    // Dragging to Explorer
     Point _dragStart;
     bool _dragCandidate;
     ResultRow? _pendingSingleSelect;
@@ -100,7 +100,7 @@ public partial class MainWindow : Window
             else if (status == IndexFile.LoadStatus.Unreadable) ShowNotice(Loc.F("StatusIndexUnreadable", backup ?? "—"));
             UpdateLibraryStatus();
 
-            // Program simgesinin üzerine bırakılan ya da "Birlikte aç" ile verilen dosyalar.
+            // Files dropped on the program icon or passed via "Open with".
             var files = _initialFiles.Where(a => File.Exists(a) || Directory.Exists(a)).ToList();
             if (files.Count > 0) await Add(files);
             if (_settings.ScanDisks) StartScan();
@@ -119,10 +119,10 @@ public partial class MainWindow : Window
     void SaveSettings()
     {
         try { _settings.Save(); }
-        catch (Exception ex) { Log.Warn("Ayarlar kaydedilemedi", ex); }
+        catch (Exception ex) { Log.Warn("Could not save settings", ex); }
     }
 
-    /// <summary>Program açıkken exe'ye bırakılan dosyalar (ikinci örnekten gelir).</summary>
+    /// <summary>Files dropped on the exe while the program is open (forwarded by the second instance).</summary>
     public async void ReceiveFromOtherInstance(string[] files)
     {
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
@@ -136,13 +136,13 @@ public partial class MainWindow : Window
     void OnLanguageChanged()
     {
         Language = XmlLanguage.GetLanguage(Loc.I.Culture.IetfLanguageTag);
-        _notice = null; // eski dilde yazılmış geçici bildirim kalmasın
+        _notice = null; // drop the temporary notice written in the old language
         UpdateSortHeaders();
         Refresh();
         UpdatePreview();
     }
 
-    // ---- Kütüphane görünümü ----
+    // ---- Library view ----
 
     void ScheduleRefresh()
     {
@@ -214,14 +214,14 @@ public partial class MainWindow : Window
         else LibraryStatus.Text = message;
     }
 
-    // ---- İlerleme ----
+    // ---- Progress ----
 
     void ShowProgress(Library.AddProgress p)
     {
         AddProgressPanel.Visibility = Visibility.Visible;
         LibraryStatus.Text = p.Message;
 
-        // Kaç arşiv olduğu bilinmiyorsa ya da tek bir (belki çok büyük) arşiv okunuyorsa süre tahmin edilemez.
+        // If the number of archives is unknown, or a single (possibly very large) archive is being read, the duration cannot be estimated.
         bool unknown = p.Total < 0 || (p.Total == 1 && p.Done == 0);
         AddProgressBar.IsIndeterminate = unknown;
         Taskbar.ProgressState = unknown ? System.Windows.Shell.TaskbarItemProgressState.Indeterminate
@@ -257,7 +257,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---- Arama ----
+    // ---- Search ----
 
     void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
@@ -294,7 +294,7 @@ public partial class MainWindow : Window
             if (ct.IsCancellationRequested) return;
             if (r.Error != QueryErrorKind.None)
             {
-                // Yazılmakta olan sorgu ("boyut:>") henüz geçersiz: önceki sonuçlar kalsın, hata durum satırında görünsün.
+                // A query still being typed ("size:>") is not valid yet: keep the previous results and show the error in the status bar.
                 ResultStatus.Text = Loc.F(r.Error switch
                 {
                     QueryErrorKind.Size => "QueryErrorSize",
@@ -308,7 +308,7 @@ public partial class MainWindow : Window
             string? status = null;
             if (r.ContentTerms is { Length: > 0 } terms)
             {
-                await Task.Delay(350, ct); // yazmaya devam ediliyorsa pahalı içerik aramasına başlama
+                await Task.Delay(350, ct); // don't start the expensive content search while the user is still typing
                 var sw = Stopwatch.StartNew();
                 ResultStatus.Text = Loc.F("StatusContent", 0, hits.Length.ToString("N0", C));
                 var progress = new Progress<(int Done, int Total)>(p =>
@@ -341,7 +341,7 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) { }
     }
 
-    /// <summary>Mevcut sonuçları seçili görünümde (liste ya da kareler) gösterir.</summary>
+    /// <summary>Shows the current results in the selected view (list or tiles).</summary>
     void ShowResults(bool scrollToTop)
     {
         _thumbnails.CancelPending();
@@ -371,7 +371,7 @@ public partial class MainWindow : Window
         SchedulePreview();
     }
 
-    // ---- Sıralama ----
+    // ---- Sorting ----
 
     void SortHeader_Click(object sender, RoutedEventArgs e)
     {
@@ -380,7 +380,7 @@ public partial class MainWindow : Window
         else
         {
             _sortKey = key;
-            _sortDescending = key is SortKey.Size or SortKey.Date; // büyük ve yeni olanlar önce daha kullanışlı
+            _sortDescending = key is SortKey.Size or SortKey.Date; // largest and newest first is more useful
         }
         ApplySort();
     }
@@ -428,9 +428,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---- Kareli görünüm ----
+    // ---- Grid view ----
 
-    int TileOuterWidth => (int)Math.Max(_iconSize + 28, 96) + 4; // kare + kenar boşluğu
+    int TileOuterWidth => (int)Math.Max(_iconSize + 28, 96) + 4; // tile + margin
 
     int ComputePerRow()
     {
@@ -444,7 +444,7 @@ public partial class MainWindow : Window
         _gridPerRow = ComputePerRow();
         var list = new GridRowList(_shownHits.Length, _gridPerRow, CreateTile);
         ResultsGrid.ItemsSource = list;
-        // Yeniden düzenlemeden (yakınlaştırma, pencere boyutu) sonra aynı yerde kal.
+        // Stay at the same place after a relayout (zoom, window size).
         if (keepVisible > 0 && list.Count > 0)
             Dispatcher.InvokeAsync(() => ScrollToGridItem(keepVisible), DispatcherPriority.Loaded);
     }
@@ -457,7 +457,7 @@ public partial class MainWindow : Window
         {
             IsSelected = position == _gridSelected,
         };
-        // Bellekte sınırsız birikmesin: çok fazlaysa (uzun kaydırmadan sonra) temizle, seçili kalsın.
+        // Don't let tiles pile up in memory: if there are too many (after a long scroll), clear them but keep the selected one.
         if (_tiles.Count > 4000)
         {
             _tiles.Clear();
@@ -496,7 +496,7 @@ public partial class MainWindow : Window
         var sv = FindChild<ScrollViewer>(ResultsGrid);
         if (sv == null || _gridPerRow <= 0) return;
         int row = position / _gridPerRow;
-        // ScrollUnit=Item: dikey ofset satır numarasıdır.
+        // ScrollUnit=Item: the vertical offset is the row number.
         if (row < sv.VerticalOffset) sv.ScrollToVerticalOffset(row);
         else if (row >= sv.VerticalOffset + Math.Max(1, sv.ViewportHeight) - 1) sv.ScrollToVerticalOffset(row - Math.Max(1, sv.ViewportHeight) + 2);
     }
@@ -563,7 +563,7 @@ public partial class MainWindow : Window
         return null;
     }
 
-    // ---- Görünüm, yakınlaştırma ve önizleme ----
+    // ---- View, zoom and preview ----
 
     void ListView_Click(object sender, RoutedEventArgs e) => SetIconSize(_lastListSize);
     void GridView_Click(object sender, RoutedEventArgs e) => SetIconSize(_lastGridSize);
@@ -593,7 +593,7 @@ public partial class MainWindow : Window
     void SetIconSize(int size)
     {
         if (size == _iconSize) return;
-        // Görünümler arası geçişte seçimi taşı.
+        // Carry the selection over when switching views.
         if (!IsGrid && Results.SelectedIndex >= 0) _gridSelected = Results.SelectedIndex;
         _iconSize = size;
         if (IsGrid) _lastGridSize = size; else _lastListSize = size;
@@ -607,7 +607,7 @@ public partial class MainWindow : Window
     void UpdateViewButtons()
     {
         var accent = TryFindResource("AccentButtonStyle") as Style;
-        // Style = null temanın (Fluent) örtük stilini de kapatıp klasik gri düğmeye düşürür; ClearValue örtük stile döner.
+        // Style = null also disables the theme's (Fluent) implicit style and falls back to the classic grey button; ClearValue restores the implicit style.
         void Mark(Button button, bool active)
         {
             if (active && accent != null) button.Style = accent;
@@ -629,7 +629,7 @@ public partial class MainWindow : Window
         if (save) SaveSettings();
     }
 
-    /// <summary>Önizleme sütunu: açıksa ve kütüphane boş değilse görünür.</summary>
+    /// <summary>Preview column: visible when enabled and the library is not empty.</summary>
     void ApplyPreviewLayout(bool emptyLibrary)
     {
         bool show = _settings.ShowPreview && !emptyLibrary;
@@ -650,7 +650,7 @@ public partial class MainWindow : Window
     {
         if (Preview.Visibility != Visibility.Visible) return;
         _previewTimer.Stop();
-        _previewTimer.Start(); // ok tuşuyla hızlı gezerken her satırı yüklememek için kısa bekleme
+        _previewTimer.Start(); // short delay so every row isn't loaded while moving quickly with the arrow keys
     }
 
     void UpdatePreview()
@@ -706,7 +706,7 @@ public partial class MainWindow : Window
 
     void Help_Click(object sender, RoutedEventArgs e) => HelpPopup.IsOpen = !HelpPopup.IsOpen;
 
-    // ---- Kayıtlı aramalar ----
+    // ---- Saved searches ----
 
     void RefreshSavedSearches()
     {
@@ -730,7 +730,7 @@ public partial class MainWindow : Window
         var existing = _settings.SavedSearches.FirstOrDefault(s => s.Query == q);
         if (existing != null)
         {
-            _settings.SavedSearches.Remove(existing); // dolu yıldız: kaydı kaldır
+            _settings.SavedSearches.Remove(existing); // filled star: remove the saved search
         }
         else
         {
@@ -759,11 +759,11 @@ public partial class MainWindow : Window
         RefreshSavedSearches();
     }
 
-    // ---- Kenar çubuğu: arşivler ----
+    // ---- Sidebar: archives ----
 
     void ArchiveList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Bir arşive tıklamak sonuçları o arşivle (ve iç içe arşivleriyle) sınırlar; boş aramada arşivin tüm içeriği görünür.
+        // Clicking an archive limits the results to that archive (and its nested archives); with an empty search, the archive's whole content is shown.
         _selectedArchive = (ArchiveList.SelectedItem as ArchiveItem)?.Path;
         RunSearch();
     }
@@ -805,7 +805,7 @@ public partial class MainWindow : Window
             await RunBusy(() => _library.AddAsync([path], _progress, manual: null));
             rec = _library.Find(path);
             if (rec is not { NeedsPassword: true }) return;
-            PasswordStore.Remove(path); // yanlış parola saklanmasın
+            PasswordStore.Remove(path); // don't keep a wrong password
             wrong = true;
         }
     }
@@ -830,7 +830,7 @@ public partial class MainWindow : Window
         if ((sender as FrameworkElement)?.Tag is string path) _library.Remove([path]);
     }
 
-    // ---- Ekleme: düğmeler, sürükle-bırak, disk taraması ----
+    // ---- Adding: buttons, drag and drop, disk scan ----
 
     void AddFiles_Click(object sender, RoutedEventArgs e)
     {
@@ -880,7 +880,7 @@ public partial class MainWindow : Window
 
     void Window_DragLeave(object sender, DragEventArgs e)
     {
-        // İmleç bir alt öğeye geçerken de DragLeave gelir; gerçekten pencereden çıkıldı mı bak.
+        // DragLeave also fires when the cursor moves onto a child element; check whether it really left the window.
         var p = e.GetPosition(this);
         if (p.X <= 0 || p.Y <= 0 || p.X >= ActualWidth || p.Y >= ActualHeight)
             DropOverlay.Visibility = Visibility.Collapsed;
@@ -890,7 +890,7 @@ public partial class MainWindow : Window
     {
         DropOverlay.Visibility = Visibility.Collapsed;
         e.Handled = true;
-        if (_dragOutActive) return; // kendi sürüklediğimiz dosyalar pencereye geri bırakıldı
+        if (_dragOutActive) return; // files we are dragging out were dropped back onto the window
         if (e.Data.GetData(DataFormats.FileDrop) is string[] paths && paths.Length > 0)
             _ = Add(paths);
     }
@@ -911,7 +911,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Log.Warn("Arşiv eklenemedi", ex);
+            Log.Warn("Could not add archives", ex);
             _notice = Loc.F("StatusAddFailed", ex.Message);
         }
         finally
@@ -922,7 +922,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---- Sonuç işlemleri (iki görünümde de seçili öğe üzerinden) ----
+    // ---- Result actions (on the selected item, in either view) ----
 
     IEnumerable<(ArchiveRecord Archive, ArchiveEntry Entry)> SelectedEntries()
     {
@@ -974,12 +974,12 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             ResultStatus.Text = "";
-            Log.Warn($"Açılamadı: {archive.DisplayPath} › {entry.Path}", ex);
+            Log.Warn($"Could not open: {archive.DisplayPath} › {entry.Path}", ex);
             MessageBox.Show(this, Loc.F("OpenFailed", ex.Message), "Arşiv Ara", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
-    /// <summary>İşlemi dener; içerik şifreliyse parola sorar ve yeniden dener. Vazgeçilirse null.</summary>
+    /// <summary>Tries the action; if the content is encrypted, asks for a password and retries. Null if cancelled.</summary>
     async Task<T?> WithPassword<T>(ArchiveRecord rec, Func<string?, T> action) where T : class
     {
         string? password = PasswordStore.For(rec);
@@ -1019,16 +1019,16 @@ public partial class MainWindow : Window
     {
         var sel = SelectedEntries().FirstOrDefault();
         if (sel.Archive == null || sel.Entry.IsDirectory) return;
-        // Aynı adlı tüm dosyalar, en yeni önce: "bu dosyanın en yeni sürümü hangi yedekte".
+        // All files with the same name, newest first: "which backup has the newest version of this file".
         ArchiveList.SelectedItem = null;
         _sortKey = SortKey.Date;
         _sortDescending = true;
         UpdateSortHeaders();
-        SetQuery($"ad:=\"{sel.Entry.Name.Replace("\"", "")}\" dosya:", versionsOf: sel.Entry.Name);
+        SetQuery($"name:=\"{sel.Entry.Name.Replace("\"", "")}\" file:", versionsOf: sel.Entry.Name);
     }
 
     /// <summary>
-    /// Seçimi arşivlere göre gruplar. Dosya: sadece adıyla; klasör: kendisi ve altındaki her şey, klasörün adıyla başlayan yollarla.
+    /// Groups the selection by archive. A file: by its name only; a folder: itself and everything under it, with paths starting at the folder's name.
     /// </summary>
     static List<(ArchiveRecord Rec, Dictionary<string, string> Map, List<string> Dirs)> Plan(
         IEnumerable<(ArchiveRecord Archive, ArchiveEntry Entry)> selection)
@@ -1085,7 +1085,7 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex)
                 {
-                    Log.Warn($"Çıkarılamadı: {rec.DisplayPath}", ex);
+                    Log.Warn($"Could not extract: {rec.DisplayPath}", ex);
                     errors.Add($"{rec.DisplayName}: {ex.Message}");
                 }
             }
@@ -1100,7 +1100,7 @@ public partial class MainWindow : Window
         if (written > 0) Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dest}\"") { UseShellExecute = true });
     }
 
-    // ---- Explorer'a sürükleme ----
+    // ---- Dragging to Explorer ----
 
     bool MovedEnough(MouseEventArgs e)
     {
@@ -1116,8 +1116,8 @@ public partial class MainWindow : Window
         if (ItemsControl.ContainerFromElement(Results, e.OriginalSource as DependencyObject) is not ListBoxItem item) return;
         _dragStart = e.GetPosition(this);
         _dragCandidate = true;
-        // Çoklu seçimdeki bir öğeye basılınca seçim hemen daralmasın (yoksa birden çok dosya sürüklenemez);
-        // sürükleme olmazsa bırakınca daraltılır (Explorer gibi).
+        // Pressing an item in a multi-selection must not shrink the selection right away (otherwise multiple files can't be dragged);
+        // if no drag happens, it is shrunk on release (like Explorer).
         if (item.IsSelected && Keyboard.Modifiers == ModifierKeys.None && Results.SelectedItems.Count > 1 && e.ClickCount == 1)
         {
             _pendingSingleSelect = item.DataContext as ResultRow;
@@ -1151,7 +1151,7 @@ public partial class MainWindow : Window
         if (selection.Count == 0) return;
         _dragOutActive = true;
         try { DragDrop.DoDragDrop(source, new LazyFileDrop(() => PrepareDrag(selection)), DragDropEffects.Copy); }
-        catch (Exception ex) { Log.Warn("Sürükleme", ex); }
+        catch (Exception ex) { Log.Warn("Drag", ex); }
         finally
         {
             _dragOutActive = false;
@@ -1159,7 +1159,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Hedef dosyaları istediğinde çağrılır: seçilenler geçici bir klasöre çıkarılır.</summary>
+    /// <summary>Called when the target asks for the files: the selected items are extracted to a temporary folder.</summary>
     string[]? PrepareDrag(List<(ArchiveRecord Archive, ArchiveEntry Entry)> selection)
     {
         Mouse.OverrideCursor = Cursors.Wait;
@@ -1177,7 +1177,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Log.Warn("Sürükleme için çıkarılamadı", ex);
+            Log.Warn("Could not extract for drag", ex);
             _notice = Loc.F("StatusExtractFailed", ex.Message);
             return null;
         }
@@ -1188,7 +1188,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---- Ayarlar ve Hakkında ----
+    // ---- Settings and About ----
 
     async void Settings_Click(object sender, RoutedEventArgs e)
     {
@@ -1205,8 +1205,8 @@ public partial class MainWindow : Window
         Refresh();
     }
 
-    // Bağlantıya (Hyperlink) UI Automation ile tıklama eşzamanlıdır: pencere bir sonraki turda açılır ki
-    // ekran okuyucu, iletişim kutusu kapanana kadar beklemesin.
+    // Invoking the Hyperlink through UI Automation is synchronous: the window opens on the next dispatcher turn so that
+    // the screen reader does not wait until the dialog is closed.
     void About_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => new AboutWindow { Owner = this }.ShowDialog());
 
     void Brand_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => About_Click(sender, e);

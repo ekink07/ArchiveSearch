@@ -1,21 +1,21 @@
 namespace ArsivAra.Core;
 
 /// <summary>
-/// "Mark of the Web": internetten indirilen dosyalara Windows'un eklediği Zone.Identifier akışı (NTFS alternatif veri akışı).
-/// Arşivden çıkarılan dosyalara aktarılınca SmartScreen ve Office Korumalı Görünüm, arşivden açılan dosyalarda da çalışır.
+/// "Mark of the Web": the Zone.Identifier stream (an NTFS alternate data stream) that Windows adds to files downloaded from the internet.
+/// When it is carried over to files extracted from an archive, SmartScreen and Office Protected View also work for files opened from the archive.
 /// </summary>
 public static class Motw
 {
     const string Stream = ":Zone.Identifier";
 
-    /// <summary>Dosyanın Zone.Identifier içeriği; yoksa (ya da okunamıyorsa) null.</summary>
+    /// <summary>The file's Zone.Identifier content; null if there is none (or it cannot be read).</summary>
     public static string? Read(string file)
     {
         try { return File.ReadAllText(file + Stream); }
         catch (Exception) { return null; }
     }
 
-    /// <summary>ZoneId (3 = İnternet, 4 = Kısıtlı); işaret yoksa null.</summary>
+    /// <summary>ZoneId (3 = Internet, 4 = Restricted); null if there is no mark.</summary>
     public static int? ZoneId(string file)
     {
         string? text = Read(file);
@@ -28,17 +28,17 @@ public static class Motw
         return null;
     }
 
-    /// <summary>Kaynak dosyada işaret varsa aynısını hedefe yazar (Explorer'ın zip açarken yaptığı gibi).</summary>
+    /// <summary>If the source file has a mark, writes the same mark to the destination (as Explorer does when extracting a zip).</summary>
     public static void Propagate(string source, string destination)
     {
         string? zone = Read(source);
         if (zone == null) return;
         try { File.WriteAllText(destination + Stream, zone); }
-        catch (Exception) { /* FAT32/exFAT gibi alternatif akış desteklemeyen birimler */ }
+        catch (Exception) { /* volumes without alternate stream support, such as FAT32/exFAT */ }
     }
 }
 
-/// <summary>Çift tıklayınca kod çalıştıran dosya türleri: açmadan önce kullanıcı uyarılır.</summary>
+/// <summary>File types that run code when double-clicked: the user is warned before opening them.</summary>
 public static class RiskyFiles
 {
     static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)

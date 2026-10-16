@@ -5,8 +5,8 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Başlangıç: yönetici izinli MFT yardımcısı mı, ikinci bir örnek mi (dosyaları açık olana iletir), yoksa asıl program mı.
-/// Beklenmeyen hatalar günlüğe yazılır; arayüz hatalarında program açık kalır.
+/// Startup: decides whether this is the elevated MFT helper, a second instance (forwards its files to the running one), or the main program.
+/// Unexpected errors are logged; the program stays open after UI errors.
 /// </summary>
 public partial class App : Application
 {
@@ -25,10 +25,10 @@ public partial class App : Application
 
         DispatcherUnhandledException += OnUiException;
         AppDomain.CurrentDomain.UnhandledException += (_, ev) =>
-            Log.Error("Yakalanmamış hata, program kapanıyor", ev.ExceptionObject as Exception);
+            Log.Error("Unhandled exception, program is closing", ev.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, ev) =>
         {
-            Log.Error("Gözlenmeyen görev hatası", ev.Exception);
+            Log.Error("Unobserved task exception", ev.Exception);
             ev.SetObserved();
         };
 
@@ -42,7 +42,7 @@ public partial class App : Application
 
         var settings = Settings.Load();
         Loc.I.Set(Strings.Resolve(settings.Language));
-        Log.Info($"Arşiv Ara {AppInfo.Version} başladı; veri klasörü: {AppPaths.DataDir}");
+        Log.Info($"Arşiv Ara {AppInfo.Version} started; data folder: {AppPaths.DataDir}");
         int days = Math.Max(0, settings.TempRetentionDays);
         _ = Task.Run(() =>
         {
@@ -65,13 +65,13 @@ public partial class App : Application
 
     void OnUiException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        Log.Error("Arayüzde beklenmeyen hata", e.Exception);
+        Log.Error("Unexpected UI error", e.Exception);
         e.Handled = true;
         try
         {
             MessageBox.Show(MainWindow, Loc.F("ErrorText", e.Exception.Message, Log.CurrentFile), Loc.T("ErrorTitle"),
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        catch (Exception) { /* pencere yoksa sadece günlük */ }
+        catch (Exception) { /* no window: log only */ }
     }
 }

@@ -5,8 +5,8 @@ using Microsoft.Win32.SafeHandles;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Bir birimin hangi fiziksel diskte olduğunu ve diskin "seek cezası" olup olmadığını (HDD mi SSD mi) bulur.
-/// Yönetici yetkisi gerekmez (birim tutamacı erişim hakkı istemeden açılır).
+/// Finds which physical disk a volume is on and whether the disk has a "seek penalty" (HDD or SSD).
+/// No administrator rights are needed (the volume handle is opened without requesting access rights).
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public static unsafe class DiskInfo
@@ -20,8 +20,8 @@ public static unsafe class DiskInfo
     static readonly ConcurrentDictionary<char, VolumeDisk> Cache = new();
 
     /// <summary>
-    /// Yol hangi diskte? Bilinmiyorsa (ağ yolu, okunamayan aygıt) her birim ayrı bir "disk" sayılır
-    /// ve döner disk (HDD) varsayılır: yanlışsa sadece biraz yavaş olur, tersi ise HDD'yi zorlar.
+    /// Which disk is the path on? If unknown (network path, unreadable device), each volume counts as a separate "disk"
+    /// and a rotating disk (HDD) is assumed: if that is wrong it is only a bit slower, while the opposite would strain the HDD.
     /// </summary>
     public static VolumeDisk ForPath(string path)
     {
@@ -33,17 +33,17 @@ public static unsafe class DiskInfo
 
     static VolumeDisk Query(char letter)
     {
-        int disk = -100 - letter; // bilinmeyen: birim başına ayrı
+        int disk = -100 - letter; // unknown: separate per volume
         bool rotational = true;
         using var h = CreateFileW($@"\\.\{letter}:", 0, 3, 0, 3, 0, 0);
         if (h.IsInvalid) return new VolumeDisk(disk, rotational);
 
-        // VOLUME_DISK_EXTENTS: NumberOfDiskExtents (uint) + pad, sonra DISK_EXTENT { DiskNumber uint, pad, StartingOffset, ExtentLength }
+        // VOLUME_DISK_EXTENTS: NumberOfDiskExtents (uint) + pad, then DISK_EXTENT { DiskNumber uint, pad, StartingOffset, ExtentLength }
         var ext = stackalloc byte[256];
         if (DeviceIoControl(h, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, null, 0, ext, 256, out _, 0) && *(uint*)ext >= 1)
             disk = (int)*(uint*)(ext + 8);
 
-        // STORAGE_PROPERTY_QUERY { PropertyId, QueryType=0 (standart), AdditionalParameters[1] }
+        // STORAGE_PROPERTY_QUERY { PropertyId, QueryType=0 (standard), AdditionalParameters[1] }
         var query = stackalloc int[3];
         query[0] = StorageDeviceSeekPenaltyProperty;
         query[1] = 0;

@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ThemeMode="System" ShutdownMode="OnMainWindowClose">
     <Application.Resources>
-        <!-- Simge yazı tipi: Windows 11'de Segoe Fluent Icons, Windows 10'da Segoe MDL2 Assets -->
+        <!-- Icon font: Segoe Fluent Icons on Windows 11, Segoe MDL2 Assets on Windows 10 -->
         <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
     </Application.Resources>
 </Application>

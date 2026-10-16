@@ -16,7 +16,7 @@ public class AppPathsTests
     [Fact]
     public void Plain_folder_uses_local_app_data_and_creates_nothing()
     {
-        string exeDir = Fx.TempDir(); // İndirilenler gibi
+        string exeDir = Fx.TempDir(); // e.g. Downloads
         Assert.Equal(@"C:\local", AppPaths.ResolveDataDir(null, exeDir, NotRemovable, @"C:\local", CanWrite));
         Assert.Empty(Directory.GetFileSystemEntries(exeDir));
     }
@@ -93,7 +93,7 @@ public class SettingsTests
         Assert.True(back.ScanDisks);
         Assert.Equal("fatura ext:pdf", back.SavedSearches.Single().Query);
 
-        File.WriteAllText(file, """{ "Roots": [], "Excludes": [ "C:\\WINDOWS" ], "IconSize": 32 }"""); // 1.0.0 ayar dosyası
+        File.WriteAllText(file, """{ "Roots": [], "Excludes": [ "C:\\WINDOWS" ], "IconSize": 32 }"""); // a 1.0.0 settings file
         var old = Settings.Load(file);
         Assert.Equal(32, old.IconSize);
         Assert.True(old.ReadNested);
@@ -105,7 +105,7 @@ public class SettingsTests
     }
 }
 
-[Collection("Parolalar")] // statik durum: başka testlerle paralel çalışmasın
+[Collection("Parolalar")] // static state: must not run in parallel with other tests
 public class PasswordStoreTests
 {
     [Fact]
@@ -123,13 +123,13 @@ public class PasswordStoreTests
             Assert.DoesNotContain("Gizli-Parola-123", File.ReadAllText(PasswordStore.FilePath));
             Assert.DoesNotContain("SadeceOturum", File.ReadAllText(PasswordStore.FilePath));
 
-            PasswordStore.ResetCache(); // program yeniden açıldı
+            PasswordStore.ResetCache(); // the program was restarted
             Assert.Equal("Gizli-Parola-123", PasswordStore.Get(@"d:\A.RAR"));
             Assert.Null(PasswordStore.Get(@"D:\b.7z"));
             Assert.Equal(1, PasswordStore.SavedCount);
 
             var nested = new ArchiveRecord { Path = @"D:\a.rar", InnerPath = "ic.zip" };
-            Assert.Equal("Gizli-Parola-123", PasswordStore.For(nested)); // iç arşiv dıştakinin parolasını dener
+            Assert.Equal("Gizli-Parola-123", PasswordStore.For(nested)); // a nested archive tries its outer archive's password
 
             PasswordStore.Remove(@"D:\a.rar");
             Assert.Null(PasswordStore.Get(@"D:\a.rar"));

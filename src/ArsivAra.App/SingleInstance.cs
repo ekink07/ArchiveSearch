@@ -9,13 +9,13 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Aynı veri klasörüyle tek bir Arşiv Ara çalışır. Program açıkken exe'ye dosya bırakılırsa (ya da "Birlikte aç" kullanılırsa)
-/// yeni süreç dosyaları açık olana iletip kapanır. Böylece iki süreç aynı index.bin'i birbirinin üzerine yazmaz.
-/// Farklı veri klasörleri (ör. USB'deki taşınabilir kopya) ayrı ayrı çalışabilir.
+/// Only one Arşiv Ara runs per data folder. If files are dropped on the exe while the program is open (or "Open with" is used),
+/// the new process forwards them to the running one and exits, so two processes never overwrite each other's index.bin.
+/// Different data folders (e.g. a portable copy on USB) can run side by side.
 /// </summary>
 static class SingleInstance
 {
-    /// <summary>Önceki örnek kapanırken yeniden başlatma: kilit bırakılana kadar beklenir.</summary>
+    /// <summary>Restart while the previous instance is closing: waits until the lock is released.</summary>
     public const string RestartFlag = "--yeniden-baslat";
 
     static Mutex? _mutex;
@@ -41,12 +41,12 @@ static class SingleInstance
         _owned = false;
     }
 
-    /// <summary>Dosyaları açık olan örneğe iletir; ulaşılamazsa false.</summary>
+    /// <summary>Forwards the files to the running instance; false if it cannot be reached.</summary>
     public static bool SendToRunning(string[] files)
     {
         try
         {
-            AllowSetForegroundWindow(-1); // açık olan pencere öne gelebilsin
+            AllowSetForegroundWindow(-1); // let the running window come to the foreground
             using var client = new NamedPipeClientStream(".", Id, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(3000);
             client.Write(JsonSerializer.SerializeToUtf8Bytes(files));
@@ -55,12 +55,12 @@ static class SingleInstance
         }
         catch (Exception ex)
         {
-            Log.Warn("Açık olan Arşiv Ara'ya ulaşılamadı", ex);
+            Log.Warn("Could not reach the running Arşiv Ara instance", ex);
             return false;
         }
     }
 
-    /// <summary>Diğer süreçlerden gelen dosya listelerini dinler (arka planda).</summary>
+    /// <summary>Listens for file lists sent by other processes (in the background).</summary>
     public static void Listen(Action<string[]> onReceived, CancellationToken ct)
     {
         _ = Task.Run(async () =>
@@ -79,7 +79,7 @@ static class SingleInstance
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex)
                 {
-                    Log.Warn("Tek örnek kanalı", ex);
+                    Log.Warn("Single-instance pipe", ex);
                     try { await Task.Delay(1000, ct); } catch (OperationCanceledException) { break; }
                 }
             }

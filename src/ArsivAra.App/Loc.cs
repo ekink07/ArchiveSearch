@@ -7,8 +7,8 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Arayüzün o anki dili. XAML'de <c>{l:T Anahtar}</c> bu nesnenin dizinleyicisine bağlanır; dil değişince
-/// "Item[]" bildirimi tüm bağlamaları günceller. Koddan: <c>Loc.T("Anahtar")</c>, <c>Loc.F("Anahtar", 3)</c>.
+/// The current UI language. In XAML, <c>{l:T Key}</c> binds to this object's indexer; when the language changes,
+/// the "Item[]" notification updates every binding. From code: <c>Loc.T("Key")</c>, <c>Loc.F("Key", 3)</c>.
 /// </summary>
 public sealed class Loc : INotifyPropertyChanged
 {
@@ -21,7 +21,7 @@ public sealed class Loc : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>Dil değişti (koddan üretilen metinler yeniden yazılsın).</summary>
+    /// <summary>The language changed (text built in code should be regenerated).</summary>
     public event Action? Changed;
 
     public void Set(string language)
@@ -41,7 +41,7 @@ public sealed class Loc : INotifyPropertyChanged
     public static string F(string key, params object?[] args) => string.Format(I.Culture, I[key], args);
 }
 
-/// <summary>XAML'de çevrilmiş metin: <c>Text="{l:T SearchHint}"</c>. Dil değişince kendiliğinden güncellenir.</summary>
+/// <summary>Translated text in XAML: <c>Text="{l:T SearchHint}"</c>. Updates automatically when the language changes.</summary>
 [MarkupExtensionReturnType(typeof(object))]
 public sealed class TExtension : MarkupExtension
 {

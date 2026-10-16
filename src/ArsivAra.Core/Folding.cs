@@ -4,9 +4,9 @@ using System.Text;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Aramayı büyük/küçük harf ve aksan duyarsız yapmak için metni "katlar":
+/// "Folds" text to make search case- and accent-insensitive:
 /// "İSTANBUL", "ıstanbul", "Istanbul" → "istanbul"; "Şükrü" → "sukru"; '\' → '/'.
-/// Her karakter için önceden hesaplanmış 64K'lık tablo kullanılır, bu yüzden çok hızlıdır.
+/// Uses a precomputed 64K table with an entry for every character, so it is very fast.
 /// </summary>
 public static class Folding
 {
@@ -28,7 +28,7 @@ public static class Folding
         char f = c;
         try
         {
-            // Aksanı ayır (ş → s + U+0327) ve sadece geri kalanların tamamı birleşik işaretse taban harfi al.
+            // Separate the accent (ş → s + U+0327) and take the base letter only if everything after it is a combining mark.
             string d = c.ToString().Normalize(NormalizationForm.FormD);
             if (d.Length > 1 && !char.IsSurrogate(d[0]))
             {

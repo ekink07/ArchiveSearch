@@ -8,8 +8,8 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Seçili dosyanın önizlemesi: resimler, metin dosyaları ve Office belgelerinin metni; bilgiler ve aynı adlı dosyanın
-/// tüm sürümleri (hangi yedekte en yenisi). Solid arşivlerde içerik ancak istenirse (arşiv baştan açılarak) yüklenir.
+/// Preview of the selected file: images, text files and the text of Office documents; details and all versions of the
+/// file with the same name (which backup has the newest). In solid archives, content is loaded only on request (by opening the archive from the start).
 /// </summary>
 public partial class PreviewPane : UserControl
 {
@@ -145,7 +145,7 @@ public partial class PreviewPane : UserControl
         if (ct.IsCancellationRequested) return;
         if (data == null)
         {
-            // Solid arşiv (ya da şifreli/büyük iç arşiv): istenirse arşiv baştan açılarak yüklenir.
+            // Solid archive (or encrypted/large nested archive): loaded on request by opening the archive from the start.
             ShowMessage(rec.IsSolid ? Loc.T("PreviewSolid") : Loc.T("PreviewEncrypted"));
             LoadAnywayButton.Visibility = Visibility.Visible;
             return;

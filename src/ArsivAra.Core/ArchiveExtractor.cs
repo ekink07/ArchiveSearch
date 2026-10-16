@@ -6,10 +6,10 @@ using SharpCompress.Readers;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Arşivlerden dosya çıkarır. ZIP, ISO ve solid olmayan arşivlerde istenen girdiye doğrudan gidilir;
-/// solid arşivlerde (7z, sıkıştırılmış tar) arşiv bir kez baştan sona okunur ve istenenler yol üstünde alınır.
-/// İç içe arşivde önce içteki arşiv geçici klasöre çıkarılır. Çıkarılan dosyalara arşivin
-/// "internetten indirildi" işareti (Mark-of-the-Web) aktarılır, böylece SmartScreen ve Office Korumalı Görünüm devrede kalır.
+/// Extracts files from archives. In ZIP, ISO and non-solid archives the requested entry is accessed directly;
+/// in solid archives (7z, compressed tar) the archive is read once from start to end and the requested entries are taken along the way.
+/// For a nested archive the inner archive is first extracted to a temporary folder. The archive's
+/// "downloaded from the internet" mark (Mark-of-the-Web) is copied to extracted files, so SmartScreen and Office Protected View stay in effect.
 /// </summary>
 public static class ArchiveExtractor
 {
@@ -17,7 +17,7 @@ public static class ArchiveExtractor
 
     static readonly object InnerLock = new();
 
-    /// <summary>İstenen girdileri bulur ve her biri için bir kez <paramref name="onEntry"/> çağırır (akış sadece çağrı süresince geçerli).</summary>
+    /// <summary>Finds the requested entries and calls <paramref name="onEntry"/> once for each (the stream is valid only during the call).</summary>
     public static void ForEach(ArchiveRecord rec, IReadOnlySet<string> paths, string? password, Action<Item, Stream> onEntry, CancellationToken ct = default)
     {
         if (!rec.IsNested)
@@ -41,7 +41,7 @@ public static class ArchiveExtractor
         {
             case ArchiveFormat.Zip:
                 if (FromZip(file, wanted, done, onEntry, ct)) return;
-                break; // ZIP değil ya da şifreli/desteklenmeyen sıkıştırma: kalanlar SharpCompress ile
+                break; // not a ZIP, or encrypted/unsupported compression: the rest via SharpCompress
             case ArchiveFormat.Iso:
                 using (var fs = ArchiveReader.OpenShared(file)) FromIso(fs, wanted, done, onEntry, ct);
                 return;
@@ -54,7 +54,7 @@ public static class ArchiveExtractor
         FromSharp(format == ArchiveFormat.Rar ? ArchiveReader.RarParts(file) : [file], wanted, done, password, onEntry, ct);
     }
 
-    /// <returns>true: istenenler ZIP'ten alındı; false: kalanlar SharpCompress ile denenmeli.</returns>
+    /// <returns>true: the requested entries were taken from the ZIP; false: the rest should be tried with SharpCompress.</returns>
     static bool FromZip(string file, IReadOnlySet<string> wanted, HashSet<string> done, Action<Item, Stream> onEntry, CancellationToken ct)
     {
         var fs = ArchiveReader.OpenShared(file);
@@ -69,10 +69,10 @@ public static class ArchiveExtractor
                 ct.ThrowIfCancellationRequested();
                 string key = ArchiveReader.NormalizePath(e.FullName);
                 if (key.EndsWith('/') || !wanted.Contains(key) || done.Contains(key)) continue;
-                if (e.IsEncrypted) return false; // .NET şifreli ZIP açamaz; SharpCompress parolayla açar
+                if (e.IsEncrypted) return false; // .NET cannot open encrypted ZIPs; SharpCompress opens them with the password
                 Stream s;
                 try { s = e.Open(); }
-                catch (InvalidDataException) { return false; } // desteklenmeyen sıkıştırma yöntemi (LZMA, BZip2, PPMd...)
+                catch (InvalidDataException) { return false; } // unsupported compression method (LZMA, BZip2, PPMd...)
                 using (s) onEntry(new Item(key, e.Length), s);
                 done.Add(key);
                 if (done.Count == wanted.Count) break;
@@ -85,7 +85,7 @@ public static class ArchiveExtractor
         Action<Item, Stream> onEntry, CancellationToken ct)
     {
         using var archive = ArchiveReader.OpenSharp(parts, password);
-        // Önce girdiler: başlığı şifreli RAR5'te IsSolid girdilerden önce sorulursa liste boş döner (SharpCompress).
+        // Entries first: for a RAR5 with encrypted headers, querying IsSolid before the entries returns an empty list (SharpCompress).
         var entries = archive.Entries.ToList();
         if (!archive.IsSolid)
         {
@@ -104,7 +104,7 @@ public static class ArchiveExtractor
         Drain(reader, wanted, done, onEntry, ct);
     }
 
-    /// <summary>Solid arşiv ya da akış: girdiler sırayla geçilir, istenenler yol üstünde okunur.</summary>
+    /// <summary>Solid archive or stream: entries are walked in order and the requested ones are read along the way.</summary>
     static void Drain(IReader reader, IReadOnlySet<string> wanted, HashSet<string> done, Action<Item, Stream> onEntry, CancellationToken ct)
     {
         while (reader.MoveToNextEntry())
@@ -130,9 +130,9 @@ public static class ArchiveExtractor
         }
     }
 
-    // ---- Geçici klasöre çıkarma ----
+    // ---- Extracting to a temporary folder ----
 
-    /// <summary>İç içe arşivi geçici klasöre bir kez çıkarır; sonraki çağrılar aynı dosyayı kullanır.</summary>
+    /// <summary>Extracts a nested archive to a temporary folder once; later calls reuse the same file.</summary>
     public static string InnerArchiveFile(ArchiveRecord rec, string? password, CancellationToken ct = default)
     {
         if (!rec.IsNested) return rec.Path;
@@ -152,7 +152,7 @@ public static class ArchiveExtractor
                     s.CopyTo(d);
                     found = true;
                 }, ct);
-                if (!found) throw new FileNotFoundException("İç arşiv bulunamadı: " + rec.InnerPath);
+                if (!found) throw new FileNotFoundException("Inner archive not found: " + rec.InnerPath);
                 File.Move(tmp, file, overwrite: true);
             }
             finally { TryDelete(tmp); }
@@ -162,8 +162,8 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// Tek bir dosyayı geçici klasöre çıkarır ve yolunu döndürür. Aynı dosya daha önce çıkarıldıysa (ör. hâlâ bir programda açıksa)
-    /// yeniden yazılmaz; açık ama farklıysa yanına numaralı bir klasör açılır.
+    /// Extracts a single file to a temporary folder and returns its path. If the same file was extracted before (e.g. it is still open in a program)
+    /// it is not rewritten; if it is open but different, a numbered folder is created next to it.
     /// </summary>
     public static string ExtractToTemp(ArchiveRecord rec, ArchiveEntry entry, string? password = null, CancellationToken ct = default)
     {
@@ -186,7 +186,7 @@ public static class ArchiveExtractor
                 s.CopyTo(d);
                 found = true;
             }, ct);
-            if (!found) throw new FileNotFoundException("Arşivde bulunamadı: " + entry.Path);
+            if (!found) throw new FileNotFoundException("Not found in archive: " + entry.Path);
             dest = MoveIntoPlace(tmp, dest);
         }
         finally { TryDelete(tmp); }
@@ -195,8 +195,8 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// Bir arşivden seçilen dosyaları klasöre yazar. <paramref name="relative"/>: girdi yolu → hedef klasöre göre yolu.
-    /// Aynı adda dosya varsa "ad (2).uzantı" olarak yazılır. Yazılan her dosya için <paramref name="onFile"/> çağrılır.
+    /// Writes the selected files from an archive to a folder. <paramref name="relative"/>: entry path → path relative to the destination folder.
+    /// If a file with the same name exists, it is written as "name (2).ext". <paramref name="onFile"/> is called for each file written.
     /// </summary>
     public static int ExtractGroup(ArchiveRecord rec, IReadOnlyDictionary<string, string> relative, string destDir, string? password,
         Action<string>? onFile = null, CancellationToken ct = default)
@@ -221,7 +221,7 @@ public static class ArchiveExtractor
         return count;
     }
 
-    /// <summary>Göreli yolu hedef klasörün altına güvenle yerleştirir: "..", sürücü adı ve geçersiz karakterler temizlenir.</summary>
+    /// <summary>Safely places a relative path under the destination folder: "..", drive names and invalid characters are removed.</summary>
     public static string SafeCombine(string root, string relative)
     {
         root = Path.GetFullPath(root);
@@ -229,9 +229,9 @@ public static class ArchiveExtractor
             .Where(p => p is not "." and not "..")
             .Select(ArchiveReader.SafeSegment)
             .ToArray();
-        if (parts.Length == 0) throw new IOException("Geçersiz yol: " + relative);
+        if (parts.Length == 0) throw new IOException("Invalid path: " + relative);
         string full = Path.GetFullPath(Path.Combine([root, .. parts]));
-        if (!full.StartsWith(root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) throw new IOException("Geçersiz yol: " + relative);
+        if (!full.StartsWith(root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid path: " + relative);
         return full;
     }
 
@@ -246,7 +246,7 @@ public static class ArchiveExtractor
         }
     }
 
-    /// <summary>Hedef başka bir programda açık ve farklıysa (taşıma başarısız) yanına numaralı klasör açılır.</summary>
+    /// <summary>If the destination is open in another program and different (the move fails), a numbered folder is created next to it.</summary>
     static string MoveIntoPlace(string tmp, string dest)
     {
         try
@@ -268,7 +268,7 @@ public static class ArchiveExtractor
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
-        throw new IOException("Geçici dosya yazılamadı: " + dest);
+        throw new IOException("Could not write temporary file: " + dest);
     }
 
     static HashSet<string> Single(string path) => new(StringComparer.Ordinal) { path };

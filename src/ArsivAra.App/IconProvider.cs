@@ -7,10 +7,10 @@ using System.Windows.Media.Imaging;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Windows'un dosya türü simgeleri (Explorer'daki gibi: klasör, Word, Fotoğraflar…). Dosyanın diskte var olması
-/// gerekmez; simge uzantıdan bulunur (SHGFI_USEFILEATTRIBUTES). Büyük boyutlar için sistem simge listesinden
-/// 48 px (ExtraLarge) ve 256 px (Jumbo) sürümler alınır. Sonuçlar uzantı + boyut başına önbelleklenir.
-/// UI iş parçacığından çağrılmalıdır.
+/// Windows file type icons (as in Explorer: folder, Word, Photos…). The file does not need to exist on disk;
+/// the icon is looked up from the extension (SHGFI_USEFILEATTRIBUTES). For large sizes, the 48 px (ExtraLarge) and
+/// 256 px (Jumbo) versions are taken from the system image list. Results are cached per extension + size.
+/// Must be called from the UI thread.
 /// </summary>
 public static class IconProvider
 {
@@ -23,11 +23,11 @@ public static class IconProvider
     const int SHIL_LARGE = 0, SHIL_SMALL = 1, SHIL_EXTRALARGE = 2, SHIL_JUMBO = 4;
     const int ILD_TRANSPARENT = 0x1;
 
-    /// <summary>İstenen piksel boyutuna en uygun simge (WPF gerekirse ölçekler).</summary>
+    /// <summary>The icon best suited to the requested pixel size (WPF scales it if needed).</summary>
     public static ImageSource? For(string fileName, bool isDirectory, double pixelSize)
     {
-        string key = isDirectory ? "<klasör>" : System.IO.Path.GetExtension(fileName).ToLowerInvariant();
-        if (key.Length == 0) key = "<uzantısız>";
+        string key = isDirectory ? "<folder>" : System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+        if (key.Length == 0) key = "<no extension>";
         int list = pixelSize <= 16 ? SHIL_SMALL : pixelSize <= 32 ? SHIL_LARGE : pixelSize <= 48 ? SHIL_EXTRALARGE : SHIL_JUMBO;
 
         if (Cache.TryGetValue((key, list), out var cached)) return cached;
@@ -81,7 +81,7 @@ public static class IconProvider
     [DllImport("user32.dll")]
     static extern bool DestroyIcon(nint hIcon);
 
-    // Sadece GetIcon kullanılıyor; önceki yöntemler sanal tablo sırasını korumak için tanımlı.
+    // Only GetIcon is used; the preceding methods are declared to preserve the vtable order.
     [ComImport, Guid("46EB5926-582E-4017-9FDF-E8998DAA0950"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     interface IImageList
     {

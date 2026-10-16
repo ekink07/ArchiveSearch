@@ -3,7 +3,7 @@ using ArsivAra.Core;
 
 namespace ArsivAra.App;
 
-/// <summary>Programın lisans metni (LICENSE) ve kullanılan açık kaynak bileşenlerin lisansları. Hakkında penceresinden açılır.</summary>
+/// <summary>The program's license text (LICENSE) and the licenses of the open-source components it uses. Opened from the About window.</summary>
 public partial class LicenseWindow : Window
 {
     public LicenseWindow()

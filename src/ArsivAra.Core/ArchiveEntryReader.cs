@@ -4,10 +4,10 @@ using SharpCompress.Archives;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Arşivden tek tek dosyaları belleğe okur (küçük resim ve önizleme için). Büyük bir arşivi her dosyada yeniden açmamak için
-/// son kullanılan birkaç arşiv açık tutulur. Aynı arşive aynı anda tek iş parçacığı erişir.
-/// Solid RAR/7z ve sıkıştırılmış tar'da bir dosyaya ulaşmak öncekilerin hepsini açmayı gerektirebilir; orada null döner.
-/// İç içe arşivler küçükse (64 MB'a kadar) geçici klasöre çıkarılıp okunur.
+/// Reads individual files from an archive into memory (for thumbnails and previews). To avoid reopening a large archive for every file,
+/// the few most recently used archives are kept open. Only one thread accesses a given archive at a time.
+/// In solid RAR/7z and compressed tar, reaching a file may require decompressing everything before it; there it returns null.
+/// Nested archives are extracted to a temporary folder and read if they are small (up to 64 MB).
 /// </summary>
 public sealed class ArchiveEntryReader : IDisposable
 {
@@ -35,9 +35,9 @@ public sealed class ArchiveEntryReader : IDisposable
     }
 
     readonly object _lock = new();
-    readonly LinkedList<Handle> _open = new(); // en son kullanılan başta
+    readonly LinkedList<Handle> _open = new(); // most recently used first
 
-    /// <summary>Girdinin içeriği; çok büyükse, bulunamazsa, şifreliyse ya da solid arşivdeyse null.</summary>
+    /// <summary>The entry's content; null if it is too large, not found, encrypted, or in a solid archive.</summary>
     public byte[]? Read(ArchiveRecord rec, string entryPath, long maxBytes)
     {
         string? password = PasswordStore.For(rec);
@@ -58,7 +58,7 @@ public sealed class ArchiveEntryReader : IDisposable
         return Read(path, format, entryPath, maxBytes, password);
     }
 
-    /// <summary>Diskteki bir arşivden okur (komut satırı ve testler için).</summary>
+    /// <summary>Reads from an archive on disk (for the command line and tests).</summary>
     public byte[]? Read(string archivePath, string entryPath, long maxBytes) =>
         Read(archivePath, ArchiveReader.FormatOf(archivePath), entryPath, maxBytes, null);
 
@@ -155,7 +155,7 @@ public sealed class ArchiveEntryReader : IDisposable
 
             fs.Dispose();
             var archive = ArchiveReader.OpenSharp(format == ArchiveFormat.Rar ? ArchiveReader.RarParts(path) : [path], password);
-            // Önce girdiler: başlığı şifreli RAR5'te IsSolid girdilerden önce sorulursa liste boş döner (SharpCompress).
+            // Entries first: for a RAR5 with encrypted headers, querying IsSolid before the entries returns an empty list (SharpCompress).
             var all = archive.Entries.ToList();
             bool solid = archive.IsSolid;
             var entries = new Dictionary<string, IArchiveEntry>(StringComparer.Ordinal);

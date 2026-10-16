@@ -2,13 +2,13 @@ using System.Windows;
 
 namespace ArsivAra.App;
 
-/// <summary>Şifreli arşiv için parola sorar; "hatırla" seçilirse parola DPAPI ile saklanır (bkz. PasswordStore).</summary>
+/// <summary>Asks for the password of an encrypted archive; if "remember" is checked, the password is stored with DPAPI (see PasswordStore).</summary>
 public partial class PasswordWindow : Window
 {
     public string Password => Box.Password;
     public bool Remember => RememberBox.IsChecked == true;
 
-    /// <param name="wrong">Önceki deneme başarısız oldu: uyarı gösterilir.</param>
+    /// <param name="wrong">The previous attempt failed: a warning is shown.</param>
     public PasswordWindow(string archiveName, bool wrong)
     {
         InitializeComponent();

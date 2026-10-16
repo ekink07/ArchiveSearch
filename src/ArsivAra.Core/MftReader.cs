@@ -6,9 +6,9 @@ using Microsoft.Win32.SafeHandles;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// $MFT'yi diskten ham olarak okur (Everything'in yöntemi). FSCTL_ENUM_USN_DATA her dosya için tek bir ad
-/// döndürür; burada her kayıttaki tüm $FILE_NAME öznitelikleri işlendiği için hard link'lerin
-/// (ör. pnpm, yedekleme araçları) bütün adları bulunur. Ayrıca büyük sıralı okumalarla daha hızlıdır.
+/// Reads $MFT raw from disk (the method Everything uses). FSCTL_ENUM_USN_DATA returns a single name per
+/// file; here every $FILE_NAME attribute in each record is processed, so all names of hard links
+/// (e.g. pnpm, backup tools) are found. It is also faster thanks to large sequential reads.
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 internal static unsafe class MftReader
@@ -18,7 +18,7 @@ internal static unsafe class MftReader
     const uint AttrFileName = 0x30;
     const uint AttrData = 0x80;
     const uint AttrEnd = 0xFFFFFFFF;
-    const uint FileNameIsDirectory = 0x10000000; // $FILE_NAME bayraklarında "dizin indeksi var"
+    const uint FileNameIsDirectory = 0x10000000; // "has a directory index" in the $FILE_NAME flags
     const byte NamespaceDos = 2;
 
     public static void Enumerate(SafeFileHandle volume, MftRecordHandler onRecord, CancellationToken ct)
@@ -32,21 +32,21 @@ internal static unsafe class MftReader
         long mftValidLength = *(long*)(vd + 56);
         long mftStartLcn = *(long*)(vd + 64);
         if (recordSize <= 0 || recordSize > 65536 || bytesPerCluster == 0)
-            throw new InvalidDataException("Beklenmeyen NTFS geometrisi");
+            throw new InvalidDataException("Unexpected NTFS geometry");
 
-        // Kayıt 0 = $MFT'nin kendisi; $DATA özniteliğinin run listesi MFT'nin diskteki parçalarını verir.
+        // Record 0 = $MFT itself; the run list of its $DATA attribute gives the MFT's fragments on disk.
         int firstRead = (int)Math.Max(recordSize, bytesPerCluster);
         var first = new byte[firstRead];
         ReadExactly(volume, first, mftStartLcn * bytesPerCluster);
         var runs = ParseMftDataRuns(first.AsSpan(0, recordSize), recordSize)
-                   ?? throw new InvalidDataException("$MFT run listesi okunamadı");
+                   ?? throw new InvalidDataException("Could not read the $MFT run list");
 
         const int ChunkTarget = 8 << 20;
         int chunkBytes = Math.Max(recordSize, ChunkTarget / recordSize * recordSize);
         chunkBytes = (int)(chunkBytes / bytesPerCluster * bytesPerCluster);
         var buffer = new byte[chunkBytes];
 
-        long mftOffset = 0; // MFT içindeki bayt konumu → kayıt numarası
+        long mftOffset = 0; // byte offset within the MFT → record number
         foreach (var (lcn, clusters) in runs)
         {
             long runBytes = clusters * bytesPerCluster;
@@ -57,7 +57,7 @@ internal static unsafe class MftReader
                 int toRead = (int)Math.Min(chunkBytes, runBytes - done);
                 if (lcn < 0)
                 {
-                    // Seyrek (sparse) bölüm: kayıt yok.
+                    // Sparse section: no records.
                     mftOffset += toRead; done += toRead; continue;
                 }
                 ReadExactly(volume, buffer.AsSpan(0, toRead), lcn * bytesPerCluster + done);
@@ -81,12 +81,12 @@ internal static unsafe class MftReader
     {
         if (*(uint*)rec != 0x454C4946) return; // "FILE"
         ushort flags = *(ushort*)(rec + 22);
-        if ((flags & 0x1) == 0) return; // kullanılmayan kayıt
+        if ((flags & 0x1) == 0) return; // unused record
         if (!ApplyFixups(rec, recordSize)) return;
 
         ushort seq = *(ushort*)(rec + 16);
         ulong baseRef = *(ulong*)(rec + 32);
-        // Uzantı kaydındaki adlar ana kayda aittir.
+        // Names in an extension record belong to the base record.
         ulong frn = baseRef != 0 ? baseRef : ((ulong)seq << 48) | (ulong)recordNumber;
 
         uint stdAttrs = 0;
@@ -100,7 +100,7 @@ internal static unsafe class MftReader
             uint len = *(uint*)(a + 4);
             if (len < 16 || pos + len > used) break;
 
-            if (a[8] == 0) // yerleşik (resident)
+            if (a[8] == 0) // resident
             {
                 uint valueLen = *(uint*)(a + 16);
                 byte* v = a + *(ushort*)(a + 20);
@@ -116,9 +116,9 @@ internal static unsafe class MftReader
                     {
                         ulong parent = *(ulong*)v;
                         uint fnFlags = *(uint*)(v + 56);
-                        // Diskteki ham öznitelikler Win32'nin gizlediği iç bitler taşır (ör. WindowsApps'teki sıkıştırılmış
-                        // dosyalarda 0x40000, Win32'de "RecallOnOpen" anlamına gelir). Sadece standart alt 16 bit kullanılır;
-                        // bulut yer tutucu kontrolü okuma aşamasında FileInfo ile (doğru Win32 öznitelikleriyle) yapılır.
+                        // The raw on-disk attributes carry internal bits that Win32 hides (e.g. 0x40000 on compressed files
+                        // in WindowsApps, which means "RecallOnOpen" in Win32). Only the standard low 16 bits are used;
+                        // the cloud placeholder check is done in the read phase via FileInfo (with the correct Win32 attributes).
                         uint attrs = (stdAttrs != 0 ? stdAttrs : fnFlags) & 0xFFFF & ~(uint)FileAttributes.Directory;
                         if ((fnFlags & FileNameIsDirectory) != 0 || ((flags & 0x2) != 0 && baseRef == 0))
                             attrs |= (uint)FileAttributes.Directory;
@@ -130,7 +130,7 @@ internal static unsafe class MftReader
         }
     }
 
-    /// <summary>Sektör sonlarındaki "update sequence" baytlarını geri yükler; tutarsızsa kayıt bozuktur.</summary>
+    /// <summary>Restores the "update sequence" bytes at the end of each sector; if they are inconsistent, the record is corrupt.</summary>
     static bool ApplyFixups(byte* rec, int recordSize)
     {
         ushort usaOffset = *(ushort*)(rec + 4);
@@ -147,7 +147,7 @@ internal static unsafe class MftReader
         return true;
     }
 
-    /// <summary>Kayıt 0'daki yerleşik olmayan $DATA özniteliğinin run listesini çözer: (LCN, küme sayısı); LCN &lt; 0 = seyrek.</summary>
+    /// <summary>Decodes the run list of the non-resident $DATA attribute in record 0: (LCN, cluster count); LCN &lt; 0 = sparse.</summary>
     static List<(long Lcn, long Clusters)>? ParseMftDataRuns(Span<byte> record, int recordSize)
     {
         fixed (byte* rec = record)
@@ -163,7 +163,7 @@ internal static unsafe class MftReader
                 uint len = *(uint*)(a + 4);
                 if (len < 16 || pos + len > used) break;
 
-                if (type == AttrData && a[8] == 1 && a[9] == 0) // isimsiz, yerleşik olmayan $DATA
+                if (type == AttrData && a[8] == 1 && a[9] == 0) // unnamed, non-resident $DATA
                 {
                     var runs = new List<(long, long)>();
                     byte* r = a + *(ushort*)(a + 32);
@@ -178,7 +178,7 @@ internal static unsafe class MftReader
                         r += lenBytes;
                         if (offBytes == 0)
                         {
-                            runs.Add((-1, count)); // seyrek
+                            runs.Add((-1, count)); // sparse
                         }
                         else
                         {
@@ -192,7 +192,7 @@ internal static unsafe class MftReader
                 pos += (int)len;
             }
         }
-        return null; // $DATA bir $ATTRIBUTE_LIST içinde (aşırı parçalı MFT): çağıran eski yönteme düşer
+        return null; // $DATA is inside an $ATTRIBUTE_LIST (heavily fragmented MFT): the caller falls back to the old method
     }
 
     static long ReadLittle(byte* p, int n, bool signed)
@@ -209,7 +209,7 @@ internal static unsafe class MftReader
         while (total < buffer.Length)
         {
             int n = RandomAccess.Read(h, buffer[total..], offset + total);
-            if (n <= 0) throw new EndOfStreamException("Birim okunamadı");
+            if (n <= 0) throw new EndOfStreamException("Could not read the volume");
             total += n;
         }
     }

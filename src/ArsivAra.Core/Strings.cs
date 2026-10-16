@@ -3,28 +3,41 @@ using System.Globalization;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Arayüz metinleri: Türkçe, İngilizce, Almanca, İspanyolca. Her anahtar dört dili birlikte taşır, böylece eksik çeviri olamaz;
-/// biçim yer tutucularının ({0}, {1}) dillerde aynı olduğu testlerle denetlenir.
+/// UI texts: Turkish, English, German, Spanish. Each key carries all four languages together, so no translation can be missing;
+/// tests check that the format placeholders ({0}, {1}) are the same in every language.
 /// </summary>
 public static class Strings
 {
-    public static readonly string[] Languages = ["tr", "en", "de", "es"];
+    /// <summary>Supported UI languages; English is the default and comes first.</summary>
+    public static readonly string[] Languages = ["en", "tr", "de", "es"];
 
-    /// <summary>Dilin kendi adıyla gösterimi (dil seçme kutusu için; çevrilmez).</summary>
+    public const string DefaultLanguage = "en";
+
+    /// <summary>Settings value meaning "follow the Windows display language".</summary>
+    public const string SystemLanguage = "system";
+
+    /// <summary>Each language in its own name (for the language picker; never translated).</summary>
     public static readonly IReadOnlyDictionary<string, string> NativeNames = new Dictionary<string, string>
     {
-        ["tr"] = "Türkçe", ["en"] = "English", ["de"] = "Deutsch", ["es"] = "Español",
+        ["en"] = "English", ["tr"] = "Türkçe", ["de"] = "Deutsch", ["es"] = "Español",
     };
 
-    /// <summary>Ayardaki dil; boşsa Windows'un arayüz dili (desteklenmiyorsa İngilizce).</summary>
+    /// <summary>
+    /// The language to show: the one chosen in the settings; for <see cref="SystemLanguage"/> the Windows display
+    /// language when it is supported; otherwise (first start, unknown value) English.
+    /// </summary>
     public static string Resolve(string? configured)
     {
         if (configured is { Length: > 0 } && Languages.Contains(configured)) return configured;
-        string system = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        return Languages.Contains(system) ? system : "en";
+        if (configured == SystemLanguage)
+        {
+            string system = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            if (Languages.Contains(system)) return system;
+        }
+        return DefaultLanguage;
     }
 
-    /// <summary>Sayı ve tarih biçimi için kültür.</summary>
+    /// <summary>Culture for number and date formatting.</summary>
     public static CultureInfo CultureOf(string language) => CultureInfo.GetCultureInfo(language switch
     {
         "tr" => "tr-TR",
@@ -43,12 +56,12 @@ public static class Strings
 
     internal static readonly IReadOnlyDictionary<string, (string Tr, string En, string De, string Es)> Table = Build(
     [
-        // ---- Genel ----
+        // ---- General ----
         ("OK", "Tamam", "OK", "OK", "Aceptar"),
         ("Cancel", "Vazgeç", "Cancel", "Abbrechen", "Cancelar"),
         ("Close", "Kapat", "Close", "Schließen", "Cerrar"),
 
-        // ---- Üst çubuk ----
+        // ---- Top bar ----
         ("SearchHint", "Arşivlerin içinde ara…", "Search inside archives…", "In Archiven suchen …", "Buscar dentro de los archivos…"),
         ("SearchHelp", "Arama dili", "Search syntax", "Suchsyntax", "Sintaxis de búsqueda"),
         ("SearchHelpText",
@@ -66,7 +79,7 @@ public static class Strings
         ("AddFolder", "Klasör ekle", "Add folder", "Ordner hinzufügen", "Añadir carpeta"),
         ("AddFolderTip", "Bir klasördeki tüm arşivleri ekle", "Add every archive in a folder", "Alle Archive eines Ordners hinzufügen", "Añadir todos los archivos comprimidos de una carpeta"),
 
-        // ---- Kenar çubuğu ----
+        // ---- Sidebar ----
         ("Archives", "Arşivler", "Archives", "Archive", "Archivos"),
         ("ArchivesCount", "Arşivler ({0})", "Archives ({0})", "Archive ({0})", "Archivos ({0})"),
         ("SavedSearches", "Kayıtlı aramalar", "Saved searches", "Gespeicherte Suchen", "Búsquedas guardadas"),
@@ -82,7 +95,7 @@ public static class Strings
         ("ArchiveInUse", "Başka bir program tarafından kullanılıyor", "In use by another program", "Wird von einem anderen Programm verwendet", "En uso por otro programa"),
         ("ArchiveUnreadable", "Okunamadı: {0}", "Could not be read: {0}", "Nicht lesbar: {0}", "No se pudo leer: {0}"),
 
-        // ---- Sütunlar ve sıralama ----
+        // ---- Columns and sorting ----
         ("ColName", "Ad", "Name", "Name", "Nombre"),
         ("ColFolder", "Arşiv içindeki klasör", "Folder in archive", "Ordner im Archiv", "Carpeta en el archivo"),
         ("ColSize", "Boyut", "Size", "Größe", "Tamaño"),
@@ -93,7 +106,7 @@ public static class Strings
         ("SortDescending", "Azalan", "Descending", "Absteigend", "Descendente"),
         ("SortTip", "Sıralamak için tıklayın", "Click to sort", "Zum Sortieren klicken", "Haz clic para ordenar"),
 
-        // ---- Menüler ----
+        // ---- Menus ----
         ("MenuOpen", "Aç", "Open", "Öffnen", "Abrir"),
         ("MenuShowArchive", "Arşivi klasörde göster", "Show archive in folder", "Archiv im Ordner anzeigen", "Mostrar el archivo en la carpeta"),
         ("MenuExtract", "Seçilenleri çıkar…", "Extract selected…", "Auswahl entpacken …", "Extraer selección…"),
@@ -103,7 +116,7 @@ public static class Strings
         ("MenuReread", "Yeniden oku", "Read again", "Neu einlesen", "Volver a leer"),
         ("MenuShowInFolder", "Klasörde göster", "Show in folder", "Im Ordner anzeigen", "Mostrar en la carpeta"),
 
-        // ---- Boş ekran ----
+        // ---- Empty screen ----
         ("EmptyTitle", "Arşivleri buraya sürükleyip bırakın", "Drag and drop archives here", "Archive hierher ziehen", "Arrastra los archivos aquí"),
         ("EmptyText", "RAR, ZIP, 7z, TAR ve ISO dosyalarının içindeki her dosya adı aranabilir hâle gelir. Bir klasör bırakırsanız içindeki tüm arşivler eklenir.",
             "Every file name inside RAR, ZIP, 7z, TAR and ISO files becomes searchable. Drop a folder to add every archive in it.",
@@ -115,7 +128,7 @@ public static class Strings
         ("DropHere", "Bırakın, eklensin", "Drop to add", "Zum Hinzufügen loslassen", "Suelta para añadir"),
         ("AboutTip", "Arşiv Ara hakkında (F1)", "About Arşiv Ara (F1)", "Über Arşiv Ara (F1)", "Acerca de Arşiv Ara (F1)"),
 
-        // ---- Durum satırı ----
+        // ---- Status bar ----
         ("StatusNoArchives", "Henüz arşiv eklenmedi", "No archives added yet", "Noch keine Archive hinzugefügt", "Aún no hay archivos añadidos"),
         ("StatusLibrary", "{0} arşiv · {1} dosya aranabilir", "{0} archives · {1} files searchable", "{0} Archive · {1} Dateien durchsuchbar", "{0} archivos comprimidos · {1} archivos para buscar"),
         ("StatusResults", "{0} sonuç ({1} ms)", "{0} results ({1} ms)", "{0} Treffer ({1} ms)", "{0} resultados ({1} ms)"),
@@ -157,7 +170,7 @@ public static class Strings
         ("QueryErrorDate", "Geçersiz tarih: {0} (örnek: tarih:2024, tarih:>=2024-06-01, tarih:bugun)", "Invalid date: {0} (e.g. date:2024, date:>=2024-06-01, date:today)", "Ungültiges Datum: {0} (z. B. date:2024, date:>=2024-06-01, date:today)", "Fecha no válida: {0} (p. ej. date:2024, date:>=2024-06-01, date:today)"),
         ("QueryErrorRegex", "Geçersiz düzenli ifade: {0}", "Invalid regular expression: {0}", "Ungültiger regulärer Ausdruck: {0}", "Expresión regular no válida: {0}"),
 
-        // ---- Pencereler ----
+        // ---- Windows ----
         ("DialogAddTitle", "Arşiv ekle", "Add archives", "Archive hinzufügen", "Añadir archivos"),
         ("DialogFilterArchives", "Arşivler", "Archives", "Archive", "Archivos comprimidos"),
         ("DialogFilterAll", "Tüm dosyalar", "All files", "Alle Dateien", "Todos los archivos"),
@@ -179,7 +192,7 @@ public static class Strings
         ("SaveSearchTitle", "Aramayı kaydet", "Save search", "Suche speichern", "Guardar búsqueda"),
         ("SaveSearchPrompt", "Bu arama hangi adla kaydedilsin?", "Name for this search:", "Name für diese Suche:", "Nombre para esta búsqueda:"),
 
-        // ---- Önizleme ----
+        // ---- Preview ----
         ("PreviewTitle", "Önizleme", "Preview", "Vorschau", "Vista previa"),
         ("PreviewSelect", "Önizlemek için bir dosya seçin", "Select a file to preview it", "Datei für die Vorschau auswählen", "Selecciona un archivo para verlo"),
         ("PreviewNone", "Bu dosya türü için önizleme yok", "No preview for this file type", "Keine Vorschau für diesen Dateityp", "No hay vista previa para este tipo de archivo"),
@@ -194,7 +207,7 @@ public static class Strings
         ("PreviewEncrypted", "Şifreli içerik: önizleme için parola gerekir", "Encrypted content: a password is needed to preview it", "Verschlüsselter Inhalt: Für die Vorschau ist ein Kennwort nötig", "Contenido cifrado: se necesita contraseña para la vista previa"),
         ("PreviewExtract", "Çıkar…", "Extract…", "Entpacken …", "Extraer…"),
 
-        // ---- Ayarlar ----
+        // ---- Settings ----
         ("SettingsTitle", "Ayarlar", "Settings", "Einstellungen", "Configuración"),
         ("SetLanguage", "Dil", "Language", "Sprache", "Idioma"),
         ("LangSystem", "Windows'un dili", "Windows language", "Windows-Sprache", "Idioma de Windows"),
@@ -220,13 +233,13 @@ public static class Strings
         ("SetOpenLogs", "Günlük klasörünü aç", "Open log folder", "Protokollordner öffnen", "Abrir carpeta de registros"),
         ("SetAboutLicense", "Hakkında ve lisans", "About and license", "Info und Lizenz", "Acerca de y licencia"),
 
-        // ---- Hakkında ----
+        // ---- About ----
         ("AboutTitle", "Arşiv Ara hakkında", "About Arşiv Ara", "Über Arşiv Ara", "Acerca de Arşiv Ara"),
         ("AboutVersion", "Sürüm {0}", "Version {0}", "Version {0}", "Versión {0}"),
         ("AboutTagline", "ZIP, RAR, 7z, TAR ve ISO arşivlerinin içinde,\naçmadan anında arama.", "Search inside ZIP, RAR, 7z, TAR and ISO archives\ninstantly, without extracting them.", "Sofortige Suche in ZIP-, RAR-, 7z-, TAR- und ISO-Archiven,\nohne sie zu entpacken.", "Busca al instante dentro de archivos ZIP, RAR, 7z, TAR e ISO,\nsin descomprimirlos."),
         ("AboutManufacturer", "Üretici: {0}", "Publisher: {0}", "Hersteller: {0}", "Fabricante: {0}"),
 
-        // ---- Lisans ----
+        // ---- License ----
         ("License", "Lisans", "License", "Lizenz", "Licencia"),
         ("LicenseTitle", "Arşiv Ara lisansı", "Arşiv Ara license", "Lizenz von Arşiv Ara", "Licencia de Arşiv Ara"),
         ("LicenseKind", "{0} lisansı · açık kaynak", "{0} license · open source", "{0}-Lizenz · Open Source", "Licencia {0} · código abierto"),
@@ -243,7 +256,7 @@ public static class Strings
     static IReadOnlyDictionary<string, (string, string, string, string)> Build((string Key, string Tr, string En, string De, string Es)[] rows)
     {
         var d = new Dictionary<string, (string, string, string, string)>(StringComparer.Ordinal);
-        foreach (var r in rows) d.Add(r.Key, (r.Tr, r.En, r.De, r.Es)); // aynı anahtar iki kez yazılırsa hemen hata verir
+        foreach (var r in rows) d.Add(r.Key, (r.Tr, r.En, r.De, r.Es)); // fails immediately if the same key is written twice
         return d;
     }
 }

@@ -1,22 +1,22 @@
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Disk taramasından sonra arşivlerdeki değişiklikleri canlı izler: MFT ile taranan birimlerde USN Journal
-/// (taşma yok, yönetici gerekir), diğer köklerde FileSystemWatcher. Olaylar ham yol olarak bildirilir;
-/// arka arkaya gelen olayları birleştirmek (debounce) çağıranın işidir. Olaylar arka plan iş parçacığından gelir.
+/// Watches archives for changes live after a disk scan: USN Journal on volumes scanned via the MFT
+/// (no overflow, requires administrator), FileSystemWatcher on other roots. Events are reported as raw paths;
+/// merging back-to-back events (debouncing) is the caller's job. Events arrive on a background thread.
 /// </summary>
 public sealed class LiveWatcher(IReadOnlyCollection<string> excludes) : IDisposable
 {
     readonly List<UsnWatcher> _usn = [];
     readonly List<FileSystemWatcher> _fsw = [];
 
-    /// <summary>Arşiv dosyası eklendi, değişti, silindi ya da adı değişti (eski ve yeni yol ayrı ayrı bildirilir).</summary>
+    /// <summary>An archive file was added, changed, deleted or renamed (old and new paths are reported separately).</summary>
     public event Action<string>? ArchiveChanged;
 
-    /// <summary>Klasör eklendi, silindi, taşındı ya da adı değişti: altındaki arşivler yeniden denetlenmeli.</summary>
+    /// <summary>A folder was added, deleted, moved or renamed: the archives under it must be rechecked.</summary>
     public event Action<string>? DirectoryChanged;
 
-    /// <summary>İzleme koptu (journal sıfırlandı, FileSystemWatcher tamponu taştı): tam yeniden tarama gerekir.</summary>
+    /// <summary>Watching broke off (journal reset, FileSystemWatcher buffer overflow): a full rescan is required.</summary>
     public event Action<string>? RescanRequired;
 
     public int WatchCount => _usn.Count + _fsw.Count;
@@ -33,7 +33,7 @@ public sealed class LiveWatcher(IReadOnlyCollection<string> excludes) : IDisposa
             }
             w.PathChanged += p => { if (!Scanner.IsExcluded(p, excludes)) ArchiveChanged?.Invoke(p); };
             w.DirectoryChanged += p => { if (!Scanner.IsExcluded(p, excludes)) DirectoryChanged?.Invoke(p); };
-            w.NameRemoved += _ => DirectoryChanged?.Invoke(j.Root); // üst klasörü de silinmiş: birimdeki kayıtlar denetlensin
+            w.NameRemoved += _ => DirectoryChanged?.Invoke(j.Root); // its parent folder was deleted too: recheck the volume's records
             w.ResetRequired += r => RescanRequired?.Invoke(r);
             w.Start();
             _usn.Add(w);
@@ -63,10 +63,10 @@ public sealed class LiveWatcher(IReadOnlyCollection<string> excludes) : IDisposa
             w.EnableRaisingEvents = true;
             _fsw.Add(w);
         }
-        catch (Exception ex) { Log.Warn($"{root} canlı izlenemiyor", ex); }
+        catch (Exception ex) { Log.Warn($"Cannot watch {root} live", ex); }
     }
 
-    // Changed olayı diskteki her yazmada gelir: sadece arşiv adlarına bakılır (ucuz).
+    // The Changed event fires on every write to disk: only archive names are checked (cheap).
     void OnArchive(string path)
     {
         if (ArchiveReader.IsArchiveName(Path.GetFileName(path)) && !Scanner.IsExcluded(path, excludes)) ArchiveChanged?.Invoke(path);
@@ -76,15 +76,15 @@ public sealed class LiveWatcher(IReadOnlyCollection<string> excludes) : IDisposa
     {
         if (Scanner.IsExcluded(path, excludes)) return;
         if (ArchiveReader.IsArchiveName(Path.GetFileName(path))) ArchiveChanged?.Invoke(path);
-        else if (Directory.Exists(path)) DirectoryChanged?.Invoke(path); // içinde arşiv olan bir klasör taşınmış olabilir
+        else if (Directory.Exists(path)) DirectoryChanged?.Invoke(path); // a folder containing archives may have been moved
     }
 
     void OnRemoved(string path)
     {
         if (Scanner.IsExcluded(path, excludes)) return;
         if (ArchiveReader.IsArchiveName(Path.GetFileName(path))) ArchiveChanged?.Invoke(path);
-        // Silinen şeyin klasör olup olmadığı artık sorulamaz; diskteki her geçici dosya silinmesi olay üretmesin diye
-        // sadece uzantısız adlar klasör sayılır.
+        // Whether the deleted item was a folder can no longer be queried; so that every temp file deletion on disk does not
+        // raise an event, only names without an extension are treated as folders.
         else if (!Path.HasExtension(path)) DirectoryChanged?.Invoke(path);
     }
 

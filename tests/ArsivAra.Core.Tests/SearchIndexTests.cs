@@ -1,13 +1,13 @@
 namespace ArsivAra.Core.Tests;
 
 /// <summary>
-/// Sentetik dizin (dizin sırası):
-///   Yedek_2025.rar      0 Belgeler/Şirket Raporu 2023.pdf (1,2 MB, 2023)   1 Belgeler/Şirket Sözleşmesi.docx (84 KB, 2024)
-///                       2 Masaüstü/Toplantı Notları.txt (3 KB, 2025)       3 Masaüstü/Kısayollar/ (klasör)
-///                       4 İSTANBUL/Galata Kulesi.jpg (4,2 MB, 2025)         5 Belgeler Arşivi/okubeni.txt (500 B, 2024)
+/// Synthetic index (index order):
+///   Yedek_2025.rar      0 Belgeler/Şirket Raporu 2023.pdf (1.2 MB, 2023)   1 Belgeler/Şirket Sözleşmesi.docx (84 KB, 2024)
+///                       2 Masaüstü/Toplantı Notları.txt (3 KB, 2025)       3 Masaüstü/Kısayollar/ (folder)
+///                       4 İSTANBUL/Galata Kulesi.jpg (4.2 MB, 2025)         5 Belgeler Arşivi/okubeni.txt (500 B, 2024)
 ///   Muhasebe_2024.7z    6 Faturalar/2024/Ocak/fatura_00123.pdf (2024)      7 Faturalar/2023/Aralık/fatura_00987.pdf (2023)
 ///                       8 Banka/Hesap Özeti Ağustos 2024.pdf (2024)
-///     › Eski/arsiv.zip  9 eski/Şirket Raporu 2023.pdf (1,2 MB, 2025; 0'ın kopyası: aynı ad, boyut, CRC)
+///     › Eski/arsiv.zip  9 eski/Şirket Raporu 2023.pdf (1.2 MB, 2025; duplicate of 0: same name, size, CRC)
 /// </summary>
 public class SearchIndexTests
 {
@@ -104,13 +104,13 @@ public class SearchIndexTests
     {
         Assert.Equal(6, Names("ext:pdf;docx").Length);
         Assert.Equal(["Belgeler/Şirket Sözleşmesi.docx"], Names("ext:.docx"));
-        Assert.Equal(4, Names("arsiv:muhasebe").Length);          // iç içe arşiv dahil
+        Assert.Equal(4, Names("arsiv:muhasebe").Length);          // including the nested archive
         Assert.Equal(["eski/Şirket Raporu 2023.pdf"], Names("arsiv:arsiv.zip"));
         Assert.Equal(["Masaüstü/Kısayollar/"], Names("klasor:"));
         Assert.Equal(9, Names("dosya:").Length);
         Assert.Equal(["Belgeler Arşivi/okubeni.txt"], Names("okubeni ad:okubeni"));
-        Assert.Empty(Names("ad:belgeler"));                         // adda değil, klasörde geçiyor
-        Assert.Equal(3, Names("belgeler").Length);                  // yolda geçiyor
+        Assert.Empty(Names("ad:belgeler"));                         // appears in the folder, not the name
+        Assert.Equal(3, Names("belgeler").Length);                  // appears in the path
         Assert.Equal(["Belgeler/Şirket Raporu 2023.pdf", "eski/Şirket Raporu 2023.pdf"], Names("ad:=\"ŞİRKET RAPORU 2023.PDF\""));
         Assert.Empty(Names("ad:=\"Şirket Raporu\""));
         Assert.Equal(["Masaüstü/Kısayollar/"], Names("klasor:kisa"));
@@ -124,7 +124,7 @@ public class SearchIndexTests
         Assert.Equal(["Masaüstü/Toplantı Notları.txt", "Belgeler Arşivi/okubeni.txt"], Names("boyut:<10kb"));
         Assert.Equal(["Belgeler/Şirket Sözleşmesi.docx"], Names("size:80kb..85kb"));
         Assert.Equal(["Belgeler Arşivi/okubeni.txt"], Names("boyut:=500"));
-        Assert.Equal(3, Names("boyut:1,1mb").Length);               // virgüllü ondalık; tek değer = en az
+        Assert.Equal(3, Names("boyut:1,1mb").Length);               // decimal comma; a single value = minimum
         var bad = Index.Search("boyut:abc");
         Assert.Equal(QueryErrorKind.Size, bad.Error);
         Assert.Equal("abc", bad.ErrorDetail);
@@ -147,7 +147,7 @@ public class SearchIndexTests
     public void Regex_filter()
     {
         Assert.Equal(2, Names(@"regex:fatura_\d+\.pdf$").Length);
-        Assert.Equal(2, Names("regex:Ocak|Aralık").Length);         // '|' düzenli ifadenin parçası
+        Assert.Equal(2, Names("regex:Ocak|Aralık").Length);         // '|' is part of the regular expression
         Assert.Equal(QueryErrorKind.Regex, Index.Search("regex:[").Error);
     }
 
@@ -157,7 +157,7 @@ public class SearchIndexTests
         Assert.Equal(["Belgeler/Şirket Raporu 2023.pdf", "eski/Şirket Raporu 2023.pdf"], Names("kopya:"));
         int hit = Index.Search("\"sirket raporu\" arsiv:yedek").Hits.Single();
         var versions = Index.SameName(hit).Select(h => Index.Get(h).Archive.DisplayName).ToArray();
-        Assert.Equal(["Muhasebe_2024.7z › arsiv.zip", "Yedek_2025.rar"], versions); // en yeni önce
+        Assert.Equal(["Muhasebe_2024.7z › arsiv.zip", "Yedek_2025.rar"], versions); // newest first
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class SearchIndexTests
     public void Archive_scope_searches_only_that_range()
     {
         var scope = Index.ScopeOf(@"E:\Muhasebe_2024.7z");
-        Assert.Equal(4, Names("", scope).Length);                    // iç içe arşiv dahil
+        Assert.Equal(4, Names("", scope).Length);                    // including the nested archive
         Assert.Equal(["eski/Şirket Raporu 2023.pdf"], Names("sirket", scope));
         Assert.Equal((0, 0), Index.ScopeOf(@"X:\yok.zip"));
     }
@@ -197,12 +197,12 @@ public class SearchIndexTests
         Assert.Equal(Sorted(SortKey.Name).Reverse(), Sorted(SortKey.Name, desc: true));
         Assert.Equal("okubeni.txt", Sorted(SortKey.Size)[0]);
         Assert.Equal("Galata Kulesi.jpg", Sorted(SortKey.Size, desc: true)[0]);
-        Assert.Equal("Şirket Raporu 2023.pdf", Sorted(SortKey.Date)[0]); // 2023'teki iki dosyadan dizinde önce gelen
+        Assert.Equal("Şirket Raporu 2023.pdf", Sorted(SortKey.Date)[0]); // of the two 2023 files, the one that comes first in the index
         Assert.Equal("fatura_00987.pdf", Sorted(SortKey.Date)[1]);
         Assert.Equal(["docx", "jpg", "pdf", "pdf", "pdf", "pdf", "pdf", "txt", "txt"], Sorted(SortKey.Type).Select(n => n[(n.LastIndexOf('.') + 1)..]).ToArray());
         Assert.Equal("Banka", Index.Get(Index.Sort(all, SortKey.Folder, false)[0]).Entry.Folder);
         Assert.Equal(all, Index.Sort(all, SortKey.Archive, false));
-        Assert.Equal(Sorted(SortKey.Name), Sorted(SortKey.Name));     // tekrarlanabilir
+        Assert.Equal(Sorted(SortKey.Name), Sorted(SortKey.Name));     // repeatable
     }
 
     [Fact]

@@ -3,7 +3,7 @@ using ArsivAra.Core;
 
 namespace ArsivAra.App;
 
-/// <summary>Logo, sürüm, yapımcı, üretici ve lisans bilgisi. F1, logo ya da durum satırındaki imzayla açılır.</summary>
+/// <summary>Logo, version, creator, manufacturer and license information. Opened with F1, the logo or the signature in the status bar.</summary>
 public partial class AboutWindow : Window
 {
     public AboutWindow()

@@ -1,7 +1,7 @@
 <Project>
 
-  <!-- Tüm projeler (uygulama, çekirdek, komut satırı) için ortak ürün ve üretici bilgisi.
-       exe'nin Özellikler > Ayrıntılar sekmesinde ve Hakkında penceresinde görünür. Yayında sürüm, etiketten (-p:Version) gelir. -->
+  <!-- Product and publisher information shared by all projects (app, core, command line).
+       Shown on the exe's Properties > Details tab and in the About window. Releases take the version from the tag (-p:Version). -->
   <PropertyGroup>
     <Version>1.1.0</Version>
     <Product>Arşiv Ara</Product>

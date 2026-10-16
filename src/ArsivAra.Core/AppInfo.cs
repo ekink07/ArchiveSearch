@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace ArsivAra.Core;
 
-/// <summary>Ürün adı, sürüm, üretici, yapımcı imzası ve lisans (Hakkında ve Lisans pencereleri, komut satırı).</summary>
+/// <summary>Product name, version, manufacturer, author credit and license (About and License windows, command line).</summary>
 public static class AppInfo
 {
     public const string Name = "Arşiv Ara";
@@ -11,19 +11,19 @@ public static class AppInfo
 
     static readonly Assembly Core = typeof(AppInfo).Assembly;
 
-    /// <summary>Çalışan programın sürümü ("1.2.3"); derleme meta verisi (+commit) atılır.</summary>
+    /// <summary>Version of the running program ("1.2.3"); build metadata (+commit) is stripped.</summary>
     public static string Version { get; } = ReadVersion();
 
-    /// <summary>Üretici firma ("Verlora Studios"); Directory.Build.props'taki Company.</summary>
+    /// <summary>Manufacturer ("Verlora Studios"); the Company in Directory.Build.props.</summary>
     public static string Company { get; } = Core.GetCustomAttribute<AssemblyCompanyAttribute>()?.Company ?? "Verlora Studios";
 
-    /// <summary>"Copyright © 2026 MaledictusMaggot"; Directory.Build.props'taki Copyright.</summary>
+    /// <summary>"Copyright © 2026 MaledictusMaggot"; the Copyright in Directory.Build.props.</summary>
     public static string Copyright { get; } = Core.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "";
 
-    /// <summary>LICENSE dosyasının tam metni (derlemeye gömülü).</summary>
+    /// <summary>Full text of the LICENSE file (embedded in the assembly).</summary>
     public static string LicenseText => Resource("LICENSE");
 
-    /// <summary>Kullanılan açık kaynak bileşenler ve lisansları (THIRD-PARTY-NOTICES.txt, derlemeye gömülü).</summary>
+    /// <summary>Open-source components used and their licenses (THIRD-PARTY-NOTICES.txt, embedded in the assembly).</summary>
     public static string ThirdPartyNotices => Resource("THIRD-PARTY-NOTICES.txt");
 
     static string ReadVersion()

@@ -10,13 +10,13 @@ Arrastra tus archivos comprimidos (o deja que los encuentre todos), escribe unas
 
 [English](README.md) · [Türkçe](README.tr.md) · [Deutsch](README.de.md) · **Español**
 
-[![Release](https://img.shields.io/github/v/release/YOUR_GITHUB_USER/ArsivAra?color=F7861F&label=versi%C3%B3n)](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest)
-[![CI](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ekink07/ArchiveSearch?color=F7861F&label=versi%C3%B3n)](https://github.com/ekink07/ArchiveSearch/releases/latest)
+[![CI](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
 ![x64 | ARM64](https://img.shields.io/badge/x64%20%7C%20ARM64-0B1B2E)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-0B1B2E)](#licencia)
 
-<img src="docs/images/search.png" width="860" alt="La búsqueda 'toplanti' encuentra notas de reunión en dos copias de seguridad, una dentro de un archivo anidado; la vista previa muestra el texto y las dos versiones">
+<img src="docs/images/search.png" width="860" alt="La búsqueda 'meeting' encuentra notas de reunión en dos copias de seguridad, una dentro de un archivo anidado; la vista previa muestra el texto y las dos versiones">
 
 </div>
 
@@ -41,7 +41,7 @@ como [Everything](https://www.voidtools.com/) busca nombres de archivo en el dis
 | **Extraer y arrastrar** | `Ctrl + E` extrae la selección a una carpeta; arrastra resultados directamente al Explorador. |
 | **Lista, cuadrícula, orden** | Iconos de Windows, miniaturas de fotos, `Ctrl + rueda` de 16 a 256 px. Haz clic en un encabezado para ordenar. |
 | **Seguro** | Los archivos extraídos conservan la marca de la Web del comprimido; programas y scripts piden confirmación antes de abrirse. Totalmente sin conexión. |
-| **Portátil, 4 idiomas** | Un solo exe para x64 o ARM64, sin instalación ni .NET. Türkçe, English, Deutsch, Español. |
+| **Portátil, 4 idiomas** | Un solo exe para x64 o ARM64, sin instalación ni .NET. En inglés por defecto; Español, Türkçe y Deutsch en la *Configuración*. |
 
 ## Instalación
 
@@ -49,13 +49,13 @@ como [Everything](https://www.voidtools.com/) busca nombres de archivo en el dis
 y la añade al menú Inicio y a *Configuración › Aplicaciones* (desde ahí se desinstala). No necesita permisos de administrador.
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1 | iex
 ```
 
 Opciones: `-Desktop` (acceso directo en el escritorio), `-Uninstall`, `-Uninstall -RemoveData` (borra también configuración y biblioteca):
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Desktop
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Desktop
 ```
 
 **winget**
@@ -64,7 +64,7 @@ Opciones: `-Desktop` (acceso directo en el escritorio), `-Uninstall`, `-Uninstal
 winget install VerloraStudios.ArsivAra
 ```
 
-**Manual**: descarga `ArsivAra.exe` (x64) o `ArsivAra-arm64.exe` de la [última versión](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest) y ejecútalo.
+**Manual**: descarga `ArsivAra.exe` (x64) o `ArsivAra-arm64.exe` de la [última versión](https://github.com/ekink07/ArchiveSearch/releases/latest) y ejecútalo.
 Con un `portable.txt` vacío junto al exe (o en una memoria USB), la configuración y la biblioteca se guardan en la carpeta `ArsivAra-veri` a su lado.
 
 ## Uso
@@ -103,7 +103,7 @@ El botón **?** junto al cuadro de búsqueda muestra la misma lista. Teclas: `Ct
 Requiere el [SDK de .NET 10](https://dotnet.microsoft.com/download/dotnet/10.0) en Windows (`winget install Microsoft.DotNet.SDK.10`).
 
 ```powershell
-git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
+git clone https://github.com/ekink07/ArchiveSearch.git
 cd ArsivAra
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # pruebas unitarias con archivos de ejemplo reales
@@ -111,7 +111,7 @@ pwsh tests/ui/ui-smoke.ps1                   # prueba de la interfaz con UI Auto
 ```
 
 Una etiqueta como `v1.1.0` ejecuta las pruebas, compila los exe x64 y ARM64, los firma si hay secretos configurados,
-publica una versión en GitHub y actualiza winget. Guía de publicación, winget y firma de código (en turco): [packaging/README.md](packaging/README.md).
+publica una versión en GitHub y actualiza winget. Guía de publicación, winget y firma de código (en inglés): [packaging/README.md](packaging/README.md).
 
 ## Limitaciones
 

@@ -5,7 +5,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace ArsivAra.Core;
 
-/// <summary>Bir USN kaydından ihtiyaç duyduğumuz alanlar.</summary>
+/// <summary>The fields we need from a USN record.</summary>
 public readonly record struct UsnEntry(ulong FileRef, ulong ParentRef, string Name, uint Attributes, uint Reason, long Usn)
 {
     public bool IsDirectory => (Attributes & 0x10) != 0;
@@ -14,14 +14,14 @@ public readonly record struct UsnEntry(ulong FileRef, ulong ParentRef, string Na
 public readonly record struct UsnJournalInfo(ulong JournalId, long NextUsn);
 
 /// <summary>
-/// MFT taramasında her kayıt için string ayırmamak adına ad bir span olarak verilir;
-/// çağıran sadece ihtiyaç duyduğu adları (klasörler, arşivler) string'e çevirir.
+/// To avoid allocating a string for every record during an MFT scan, the name is passed as a span;
+/// the caller converts only the names it needs (folders, archives) to strings.
 /// </summary>
 public delegate void MftRecordHandler(ulong fileRef, ulong parentRef, uint attributes, ReadOnlySpan<char> name);
 
 /// <summary>
-/// NTFS biriminin MFT'sini ve USN Journal'ını doğrudan okur (Everything'in yöntemi).
-/// Birim tutamacı açmak yönetici yetkisi gerektirir.
+/// Reads an NTFS volume's MFT and USN Journal directly (the method Everything uses).
+/// Opening a volume handle requires administrator rights.
 /// </summary>
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed unsafe class NtfsVolume : IDisposable
@@ -42,7 +42,7 @@ public sealed unsafe class NtfsVolume : IDisposable
     readonly SafeFileHandle _volume;
     SafeFileHandle? _rootDir;
 
-    /// <summary>"C:\" biçiminde birim kökü.</summary>
+    /// <summary>Volume root in the form "C:\".</summary>
     public string Root { get; }
 
     NtfsVolume(string root, SafeFileHandle volume)
@@ -60,13 +60,13 @@ public sealed unsafe class NtfsVolume : IDisposable
         }
     }
 
-    /// <summary>Birim NTFS ise ve erişim varsa açar; yoksa null (klasör gezmeye geri düşülür).</summary>
+    /// <summary>Opens the volume if it is NTFS and accessible; otherwise null (falls back to walking folders).</summary>
     public static NtfsVolume? TryOpen(string anyPath)
     {
         try
         {
             string? root = Path.GetPathRoot(Path.GetFullPath(anyPath));
-            if (root is null || root.Length != 3 || root[1] != ':') return null; // ağ yolu, UNC vb.
+            if (root is null || root.Length != 3 || root[1] != ':') return null; // network path, UNC etc.
             var drive = new DriveInfo(root);
             if (!drive.IsReady || !string.Equals(drive.DriveFormat, "NTFS", StringComparison.OrdinalIgnoreCase)) return null;
 
@@ -85,31 +85,31 @@ public sealed unsafe class NtfsVolume : IDisposable
     }
 
     /// <summary>
-    /// MFT'deki tüm kayıtları dolaşır (FSCTL_ENUM_USN_DATA). Disk taramasından katlarca hızlıdır,
-    /// çünkü klasörler tek tek açılmaz; dosya tablosu büyük bloklar hâlinde okunur.
+    /// Walks all records in the MFT (FSCTL_ENUM_USN_DATA). Many times faster than a disk walk,
+    /// because folders are not opened one by one; the file table is read in large blocks.
     /// </summary>
-    /// <summary>Son MFT taramasında kullanılan yöntem (teşhis için).</summary>
+    /// <summary>The method used in the last MFT scan (for diagnostics).</summary>
     public string? LastEnumerationMethod { get; private set; }
 
     /// <summary>
-    /// MFT'deki tüm kayıtları dolaşır. Önce ham $MFT okuması (tüm hard link adlarıyla), o olmazsa
-    /// FSCTL_ENUM_USN_DATA (dosya başına tek ad). İkisi de klasörleri tek tek açmaz.
+    /// Walks all records in the MFT. First a raw $MFT read (with all hard link names), and if that fails,
+    /// FSCTL_ENUM_USN_DATA (one name per file). Neither opens folders one by one.
     /// </summary>
     public void EnumerateMft(MftRecordHandler onRecord, CancellationToken ct = default)
     {
         try
         {
             MftReader.Enumerate(_volume, onRecord, ct);
-            LastEnumerationMethod = "ham MFT";
+            LastEnumerationMethod = "raw MFT";
             return;
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception) { /* aşağıdaki API'ye düş */ }
+        catch (Exception) { /* fall back to the API below */ }
         EnumerateUsnData(onRecord, ct);
         LastEnumerationMethod = "FSCTL_ENUM_USN_DATA";
     }
 
-    /// <summary>Teşhis: ham MFT ile FSCTL_ENUM_USN_DATA'yı ayrı ayrı çalıştırmak için.</summary>
+    /// <summary>Diagnostics: for running the raw MFT read and FSCTL_ENUM_USN_DATA separately.</summary>
     public void EnumerateRawMft(MftRecordHandler onRecord, CancellationToken ct = default) => MftReader.Enumerate(_volume, onRecord, ct);
     public void EnumerateUsnDataOnly(MftRecordHandler onRecord, CancellationToken ct = default) => EnumerateUsnData(onRecord, ct);
 
@@ -134,7 +134,7 @@ public sealed unsafe class NtfsVolume : IDisposable
                     throw new Win32Exception(err);
                 }
                 if (returned <= 8) break;
-                input[0] = *(long*)buf; // bir sonraki başlangıç kaydı
+                input[0] = *(long*)buf; // next starting record
                 ParseRaw(buf + 8, returned - 8, onRecord);
             }
         }
@@ -142,8 +142,8 @@ public sealed unsafe class NtfsVolume : IDisposable
     }
 
     /// <summary>
-    /// startUsn'den itibaren journal'daki yeni kayıtları okur ve bir sonraki USN'i döndürür.
-    /// Beklemez; yeni kayıt yoksa hemen döner (çağıran periyodik yoklar).
+    /// Reads new journal records starting at startUsn and returns the next USN.
+    /// Does not wait; returns immediately if there are no new records (the caller polls periodically).
     /// </summary>
     public long ReadJournal(ulong journalId, long startUsn, Action<UsnEntry> onEntry, byte[] buffer)
     {
@@ -206,7 +206,7 @@ public sealed unsafe class NtfsVolume : IDisposable
             }
             else if (major == 3)
             {
-                // 128 bit kimlikler; NTFS'te üst 64 bit sıfırdır.
+                // 128-bit IDs; on NTFS the upper 64 bits are zero.
                 var name = new string((char*)(p + *(ushort*)(p + 74)), 0, *(ushort*)(p + 72) / 2);
                 onEntry(new UsnEntry(*(ulong*)(p + 8), *(ulong*)(p + 24), name, *(uint*)(p + 68), *(uint*)(p + 56), *(long*)(p + 40)));
             }
@@ -214,13 +214,13 @@ public sealed unsafe class NtfsVolume : IDisposable
         }
     }
 
-    /// <summary>Dosya kimliğinden (FRN) güncel tam yolu bulur. Silinmişse null.</summary>
+    /// <summary>Resolves the current full path from a file ID (FRN). Null if deleted.</summary>
     public string? PathFromId(ulong fileRef)
     {
         _rootDir ??= CreateFileW(Root, 0, FILE_SHARE_READ_WRITE | 0x4, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
         if (_rootDir.IsInvalid) return null;
 
-        // FILE_ID_DESCRIPTOR: dwSize, Type (0 = FileIdType), FileId (16 baytlık birlik)
+        // FILE_ID_DESCRIPTOR: dwSize, Type (0 = FileIdType), FileId (16-byte union)
         byte* desc = stackalloc byte[24];
         *(uint*)desc = 24;
         *(int*)(desc + 4) = 0;

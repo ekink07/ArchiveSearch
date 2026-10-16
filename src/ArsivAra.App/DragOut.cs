@@ -4,8 +4,8 @@ using System.Windows;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Sonuçları Explorer'a (ya da başka bir programa) sürüklemek. Dosyalar sürükleme başlarken değil, hedef ilk kez
-/// dosya listesini istediğinde çıkarılır (gecikmeli veri): sürüklemeden vazgeçilirse hiçbir şey çıkarılmaz.
+/// Dragging results to Explorer (or another program). Files are extracted not when the drag starts but when the target
+/// first asks for the file list (delayed rendering): if the drag is cancelled, nothing is extracted.
 /// </summary>
 sealed class LazyFileDrop(Func<string[]?> extract) : IDataObject
 {
@@ -30,7 +30,7 @@ sealed class LazyFileDrop(Func<string[]?> extract) : IDataObject
 
     public object? GetData(string format, bool autoConvert) =>
         format == DataFormats.FileDrop ? Files
-        : format == PreferredDropEffect ? new MemoryStream(BitConverter.GetBytes(1)) // DROPEFFECT_COPY: taşıma değil kopyalama
+        : format == PreferredDropEffect ? new MemoryStream(BitConverter.GetBytes(1)) // DROPEFFECT_COPY: copy, not move
         : null;
 
     public object? GetData(Type format) => format == typeof(string[]) ? Files : null;
@@ -40,7 +40,7 @@ sealed class LazyFileDrop(Func<string[]?> extract) : IDataObject
     public string[] GetFormats() => [DataFormats.FileDrop, PreferredDropEffect];
     public string[] GetFormats(bool autoConvert) => GetFormats();
 
-    // Hedef program sürükleme görseli gibi ek bilgiler yazmak isteyebilir; saklamaya gerek yok.
+    // The target program may want to write extra data such as the drag image; no need to keep it.
     public void SetData(object data) { }
     public void SetData(string format, object data) { }
     public void SetData(Type format, object data) { }

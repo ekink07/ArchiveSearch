@@ -6,7 +6,7 @@ public static class AppPaths
 {
     public const string PortableFolderName = "ArsivAra-veri";
 
-    /// <summary>İndeks, ayarlar, parolalar ve günlüğün klasörü (bkz. <see cref="ResolveDataDir"/>).</summary>
+    /// <summary>Folder for the index, settings, passwords and log (see <see cref="ResolveDataDir"/>).</summary>
     public static string DataDir { get; } = ResolveDataDir(
         Environment.GetEnvironmentVariable("ARSIVARA_DATA"),
         Path.GetDirectoryName(Environment.ProcessPath),
@@ -15,13 +15,13 @@ public static class AppPaths
         CanWrite);
 
     /// <summary>
-    /// Veri klasörünü seçer:
-    /// 1. ARSIVARA_DATA ortam değişkeni (test için);
-    /// 2. exe'nin yanında "ArsivAra-veri" klasörü zaten varsa orası (taşınabilir kullanım sürer);
-    /// 3. exe'nin yanında "portable" ya da "portable.txt" dosyası varsa ya da exe çıkarılabilir bir diskteyse (USB bellek)
-    ///    exe'nin yanında açılır;
-    /// 4. aksi halde %LOCALAPPDATA%\ArsivAra. Böylece İndirilenler ya da Masaüstü'nde exe'nin yanına klasör açılmaz.
-    /// Taşınabilir klasöre yazılamıyorsa (ör. salt okunur USB) 4. seçeneğe düşülür.
+    /// Chooses the data folder:
+    /// 1. the ARSIVARA_DATA environment variable (for testing);
+    /// 2. the "ArsivAra-veri" folder next to the exe, if it already exists (portable use continues);
+    /// 3. if there is a "portable" or "portable.txt" file next to the exe, or the exe is on a removable drive (USB stick),
+    ///    it is created next to the exe;
+    /// 4. otherwise %LOCALAPPDATA%\ArsivAra. This way no folder is created next to the exe in Downloads or on the Desktop.
+    /// If the portable folder is not writable (e.g. a read-only USB stick), it falls back to option 4.
     /// </summary>
     internal static string ResolveDataDir(string? env, string? exeDir, Func<string, bool> isRemovable, string localDir, Func<string, bool> canWrite)
     {
@@ -68,7 +68,7 @@ public static class AppPaths
     public static string ExtractDir => Path.Combine(Path.GetTempPath(), "ArsivAra");
 }
 
-/// <summary>Kaydedilmiş arama: kenar çubuğunda adıyla görünür, tıklayınca sorgu uygulanır.</summary>
+/// <summary>Saved search: appears by name in the sidebar; clicking it applies the query.</summary>
 public sealed class SavedSearch
 {
     public string Name { get; set; } = "";
@@ -77,38 +77,38 @@ public sealed class SavedSearch
 
 public sealed class Settings
 {
-    /// <summary>Disk taramasında taranacak kök klasörler. Boşsa tüm sabit diskler taranır.</summary>
+    /// <summary>Root folders to scan in the disk scan. If empty, all fixed drives are scanned.</summary>
     public List<string> Roots { get; set; } = [];
 
-    /// <summary>Taranmayacak klasörler (alt klasörleriyle) ve listeden kaldırılan arşiv dosyaları.</summary>
+    /// <summary>Folders not to scan (including their subfolders) and archive files removed from the list.</summary>
     public List<string> Excludes { get; set; } =
     [
         Environment.GetFolderPath(Environment.SpecialFolder.Windows),
         AppPaths.ExtractDir.TrimEnd('\\'),
     ];
 
-    /// <summary>Simge/küçük resim boyutu (px). 16–32: liste, 48 ve üstü: kareli görünüm. Ctrl+tekerlek ile değişir.</summary>
+    /// <summary>Icon/thumbnail size (px). 16–32: list, 48 and above: grid view. Changed with Ctrl+mouse wheel.</summary>
     public int IconSize { get; set; } = 16;
 
-    /// <summary>Arayüz dili: "" (Windows'un dili), "tr", "en", "de", "es".</summary>
+    /// <summary>UI language: "" (the Windows language), "tr", "en", "de", "es".</summary>
     public string Language { get; set; } = "";
 
-    /// <summary>Bilgisayardaki tüm arşivleri bul ve değişiklikleri canlı izle.</summary>
+    /// <summary>Find all archives on the computer and watch for changes live.</summary>
     public bool ScanDisks { get; set; }
 
-    /// <summary>Disk taramasında MFT kullan: yönetici izni ister, klasör gezmekten kat kat hızlı.</summary>
+    /// <summary>Use the MFT for the disk scan: requires administrator rights, many times faster than walking folders.</summary>
     public bool FastScan { get; set; }
 
-    /// <summary>Arşivlerin içindeki arşivleri (zip içinde zip) de listele.</summary>
+    /// <summary>Also list archives inside archives (zip inside zip).</summary>
     public bool ReadNested { get; set; } = true;
 
-    /// <summary>Açmak için çıkarılan geçici dosyalar bu kadar gün sonra silinir.</summary>
+    /// <summary>Temporary files extracted for opening are deleted after this many days.</summary>
     public int TempRetentionDays { get; set; } = 2;
 
     public bool ShowPreview { get; set; }
     public double PreviewWidth { get; set; } = 360;
 
-    /// <summary>Sonuç sıralaması (<see cref="SortKey"/> adı) ve yönü.</summary>
+    /// <summary>Result sort order (a <see cref="SortKey"/> name) and direction.</summary>
     public string SortKey { get; set; } = "";
     public bool SortDescending { get; set; }
 
@@ -133,13 +133,13 @@ public sealed class Settings
             if (File.Exists(file))
                 return JsonSerializer.Deserialize<Settings>(File.ReadAllText(file)) ?? new Settings();
         }
-        catch (Exception ex) { Log.Warn("Ayarlar okunamadı, varsayılanlar kullanılıyor", ex); }
+        catch (Exception ex) { Log.Warn("Could not read settings, using defaults", ex); }
         return new Settings();
     }
 
     public void Save() => Save(AppPaths.SettingsFile);
 
-    /// <summary>Önce geçici dosyaya yazılır: yazma yarıda kalırsa eski ayarlar bozulmaz.</summary>
+    /// <summary>Written to a temporary file first: if writing is interrupted, the old settings are not corrupted.</summary>
     public void Save(string file)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);

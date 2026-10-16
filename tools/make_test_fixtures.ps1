@@ -1,6 +1,6 @@
-# Arşiv Ara testleri için örnek arşivleri üretir: tests/ArsivAra.Core.Tests/Fixtures
-# Gerekenler: WinRAR (Rar.exe, RAR5/RAR4 ve çok parçalı arşivler), 7-Zip (7z.exe), Windows'un IMAPI2 bileşeni (ISO).
-# Çıktılar depoya eklenir; testler bu araçlar olmadan da (CI'da) çalışır. Yeniden üretmek için: pwsh tools/make_test_fixtures.ps1
+# Produces the sample archives for the Arşiv Ara tests: tests/ArsivAra.Core.Tests/Fixtures
+# Requires WinRAR (Rar.exe: RAR5/RAR4 and multi-part archives), 7-Zip (7z.exe) and Windows' IMAPI2 component (ISO).
+# The output is committed, so the tests run without these tools (also in CI). To regenerate: pwsh tools/make_test_fixtures.ps1
 param(
   [string]$Rar = "$env:ProgramFiles\WinRAR\Rar.exe",
   [string]$SevenZip = "$env:ProgramFiles\7-Zip\7z.exe"
@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName System.IO.Compression
-foreach ($tool in $Rar, $SevenZip) { if (-not (Test-Path $tool)) { throw "Bulunamadı: $tool" } }
+foreach ($tool in $Rar, $SevenZip) { if (-not (Test-Path $tool)) { throw "Not found: $tool" } }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $out = Join-Path $root 'tests\ArsivAra.Core.Tests\Fixtures'
@@ -22,7 +22,7 @@ function Write-Utf8([string]$path, [string]$text) {
   [IO.File]::WriteAllText($path, $text, (New-Object Text.UTF8Encoding $false))
 }
 
-# ---- Kaynak ağaç (Türkçe adlar, boş klasör, sıkıştırılamayan veri) ----
+# ---- Source tree (Turkish names, an empty folder, incompressible data) ----
 Write-Utf8 "$src\okubeni.txt" "Arşiv Ara test dosyası.`r`n"
 Write-Utf8 "$src\Belgeler\Şirket Raporu 2023.txt" "Şirket raporu 2023. Gizli kelime: zümrüt.`r`n"
 Write-Utf8 "$src\Belgeler\Sözleşme.txt" "Sözleşme metni, İSTANBUL şubesi.`r`n"
@@ -32,12 +32,12 @@ for ($x = 0; $x -lt 16; $x++) { for ($y = 0; $y -lt 16; $y++) { $bmp.SetPixel($x
 $bmp.Save("$src\Fotoğraflar\İstanbul\kule.png", [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 $bytes = New-Object byte[] (48 * 1024); (New-Object Random 1234).NextBytes($bytes)
 [IO.File]::WriteAllBytes("$src\Veri\rastgele.bin", $bytes)
-# Sabit tarih: testler tarih filtresini de dener
+# Fixed date: the tests also exercise the date filter
 Get-ChildItem $src -Recurse -File | ForEach-Object { $_.LastWriteTime = [datetime]'2024-06-15 10:30:00' }
 
 function Run([string]$exe, [string[]]$arguments, [string]$cwd) {
   $p = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $cwd -NoNewWindow -Wait -PassThru
-  if ($p.ExitCode -ne 0) { throw "$exe $($arguments -join ' ') çıkış kodu $($p.ExitCode)" }
+  if ($p.ExitCode -ne 0) { throw "$exe $($arguments -join ' ') exit code $($p.ExitCode)" }
 }
 
 # ---- RAR (WinRAR) ----
@@ -58,7 +58,7 @@ Run $SevenZip @('a', '-bso0', '-bsp0', '-tbzip2', "`"$out\kaynak.tar.bz2`"", "`"
 Run $SevenZip @('a', '-bso0', '-bsp0', '-txz', "`"$out\kaynak.tar.xz`"", "`"$out\kaynak.tar`"") $out
 Copy-Item "$out\kaynak.tar.gz" "$out\kaynak.tgz"
 
-# ---- ZIP (.NET): UTF-8 bayraklı ve eski DOS Türkçe (CP857) adlar ----
+# ---- ZIP (.NET): with the UTF-8 flag and with old DOS Turkish (CP857) names ----
 [Text.Encoding]::RegisterProvider([Text.CodePagesEncodingProvider]::Instance)
 function New-Zip([string]$path, [Text.Encoding]$encoding) {
   $fs = [IO.File]::Create($path)
@@ -74,7 +74,7 @@ function New-Zip([string]$path, [Text.Encoding]$encoding) {
 New-Zip "$out\zip-utf8.zip" ([Text.Encoding]::UTF8)
 New-Zip "$out\zip-cp857.zip" ([Text.Encoding]::GetEncoding(857))
 
-# ---- İç içe arşiv: zip içinde zip, tar.gz ve 7z ----
+# ---- Nested archives: zip, tar.gz and 7z inside a zip ----
 $nest = Join-Path $work 'ic'
 New-Item -ItemType Directory -Force "$nest\arsivler" | Out-Null
 Copy-Item "$src\okubeni.txt" "$nest\okubeni.txt"
@@ -83,7 +83,7 @@ Copy-Item "$out\kaynak.tar.gz" "$nest\arsivler\ic.tar.gz"
 Copy-Item "$out\7z-solid.7z" "$nest\arsivler\ic.7z"
 Run $SevenZip @('a', '-bso0', '-bsp0', '-tzip', "`"$out\ic-ice.zip`"", '*') $nest
 
-# ---- ISO (Windows IMAPI2): ISO 9660 + Joliet, sadece UDF, sadece ISO 9660 ----
+# ---- ISO (Windows IMAPI2): ISO 9660 + Joliet, UDF only, ISO 9660 only ----
 Add-Type -TypeDefinition @"
 using System; using System.IO; using System.Runtime.InteropServices.ComTypes;
 public static class ImapiIso {

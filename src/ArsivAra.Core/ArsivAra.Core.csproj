@@ -8,17 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Testler iç (internal) ayrıştırıcıları ve yolları doğrudan dener -->
+    <!-- Tests exercise the internal parsers and paths directly -->
     <InternalsVisibleTo Include="ArsivAra.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- SharpCompress paket olarak değil, kaynak kod olarak projede: src/ThirdParty/README.md -->
+    <!-- SharpCompress is included as source code, not as a package: src/ThirdParty/README.md -->
     <ProjectReference Include="..\ThirdParty\SharpCompress\SharpCompress.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Lisans penceresi ve "ArsivAra.Cli lisans" bu metinleri gösterir; ayrı dosya dağıtmaya gerek kalmaz -->
+    <!-- The License window and "ArsivAra.Cli lisans" show these texts; no separate files need to be shipped -->
     <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE" Link="LICENSE" />
     <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.txt" LogicalName="THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" />
   </ItemGroup>

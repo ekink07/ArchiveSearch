@@ -4,7 +4,7 @@ namespace ArsivAra.Core.Tests;
 
 public class IndexFileTests
 {
-    /// <summary>1.0.0'ın yazdığı biçim (sürüm 1).</summary>
+    /// <summary>The format written by 1.0.0 (version 1).</summary>
     static void WriteV1(string path, string archivePath, string error, params (string Path, long Size, bool Dir)[] entries)
     {
         using var fs = File.Create(path);
@@ -41,7 +41,7 @@ public class IndexFileTests
         var rec = Assert.Single(list);
         Assert.Equal(ArchiveError.Encrypted, rec.ErrorKind);
         Assert.True(rec.Manual);
-        Assert.Equal("Belgeler/", rec.Entries[0].Path); // klasör yolu '/' ile biter
+        Assert.Equal("Belgeler/", rec.Entries[0].Path); // folder paths end with '/'
 
         IndexFile.Save(list, path);
         var (again, status2, _) = IndexFile.LoadForUse(path);
@@ -81,7 +81,7 @@ public class IndexFileTests
         using (var w = new BinaryWriter(br))
         {
             w.Write(0x56535241);
-            w.Write(99); // gelecekteki bir sürüm
+            w.Write(99); // a future version
         }
         Assert.Throws<IndexVersionException>(() => IndexFile.Load(path));
 

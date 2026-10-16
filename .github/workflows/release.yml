@@ -1,17 +1,17 @@
-# v1.2.3 gibi bir etiket gönderildiğinde testleri çalıştırır, x64 ve ARM64 için taşınabilir exe derler,
-# sırlar tanımlıysa imzalar, GitHub sürümü olarak yayınlar ve winget güncellemesini gönderir.
+# When a tag such as v1.2.3 is pushed: runs the tests, builds portable exes for x64 and ARM64,
+# signs them if the secrets are set, publishes a GitHub release and submits the winget update.
 #   git tag v1.1.0
 #   git push origin v1.1.0
 #
-# İsteğe bağlı sırlar (Settings > Secrets and variables > Actions); tanımlı değillerse ilgili adım atlanır.
-# Ayrıntılar: packaging/README.md
-#   İmzalama, SSL.com eSigner (bulut OV sertifikası, Türkiye'den alınabilir):
+# Optional secrets (Settings > Secrets and variables > Actions); a step is skipped when its secrets are missing.
+# Details: packaging/README.md
+#   Signing with SSL.com eSigner (cloud OV certificate, available from Turkey):
 #     ES_USERNAME, ES_PASSWORD, ES_CREDENTIAL_ID, ES_TOTP_SECRET
-#   İmzalama, Azure Artifact Signing (eski adı Trusted Signing; yalnızca desteklenen ülkelerdeki kuruluşlar):
+#   Signing with Azure Artifact Signing (formerly Trusted Signing; only organizations in supported countries):
 #     AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
 #     TRUSTED_SIGNING_ENDPOINT, TRUSTED_SIGNING_ACCOUNT, TRUSTED_SIGNING_PROFILE
-#   winget (paket winget-pkgs'e bir kez elle eklendikten sonra):
-#     WINGET_TOKEN  (public_repo yetkili klasik GitHub token; microsoft/winget-pkgs aynı hesapta fork'lanmış olmalı)
+#   winget (after the package has been added to winget-pkgs once by hand):
+#     WINGET_TOKEN  (classic GitHub token with public_repo; microsoft/winget-pkgs must be forked under the same account)
 name: Release
 
 on:
@@ -29,7 +29,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - name: Birim testleri
+      - name: Unit tests
         run: dotnet test tests/ArsivAra.Core.Tests -c Release
 
   build:
@@ -51,7 +51,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Taşınabilir exe derle (${{ matrix.rid }})
+      - name: Build portable exe (${{ matrix.rid }})
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}'.TrimStart('v')
@@ -62,7 +62,7 @@ jobs:
           New-Item -ItemType Directory dist | Out-Null
           Move-Item out/ArsivAra.exe dist/${{ matrix.asset }}
 
-      - name: İmzala (Azure Artifact Signing)
+      - name: Sign (Azure Artifact Signing)
         if: env.AZURE_SIGNING == 'true'
         uses: azure/trusted-signing-action@v0.5.1
         with:
@@ -95,7 +95,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: İmzala x64 (SSL.com eSigner)
+      - name: Sign x64 (SSL.com eSigner)
         if: env.SSLCOM_SIGNING == 'true'
         uses: sslcom/esigner-codesign@develop
         with:
@@ -107,7 +107,7 @@ jobs:
           file_path: ${{ github.workspace }}/dist/ArsivAra.exe
           override: true
 
-      - name: İmzala ARM64 (SSL.com eSigner)
+      - name: Sign ARM64 (SSL.com eSigner)
         if: env.SSLCOM_SIGNING == 'true'
         uses: sslcom/esigner-codesign@develop
         with:
@@ -119,7 +119,7 @@ jobs:
           file_path: ${{ github.workspace }}/dist/ArsivAra-arm64.exe
           override: true
 
-      # Özet imzadan sonra alınır: install.ps1 ve winget bu değeri doğrular.
+      # Hashes are taken after signing: install.ps1 and winget verify them.
       - name: SHA256
         run: |
           cd dist
@@ -146,13 +146,13 @@ jobs:
           name: release-files
           path: dist
 
-      - name: Sürümü yayınla
+      - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
 
-      - name: winget güncellemesi gönder
+      - name: Submit the winget update
         if: env.WINGET == 'true'
         uses: vedantmgoyal9/winget-releaser@v2
         with:

@@ -3,9 +3,9 @@ using System.ComponentModel;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Bir NTFS biriminin USN Journal'ını izler (FileSystemWatcher'ın aksine tampon taşması yok,
-/// uygulama kapalıyken bile kayıt tutulur). Arşiv dosyalarındaki ve klasörlerin taşınma/silinmesindeki
-/// değişiklikleri tam yol olarak bildirir.
+/// Watches an NTFS volume's USN Journal (unlike FileSystemWatcher there is no buffer overflow,
+/// and records are kept even while the app is closed). Reports changes to archive files and
+/// folder moves/deletions as full paths.
 /// </summary>
 public sealed class UsnWatcher : IDisposable
 {
@@ -30,16 +30,16 @@ public sealed class UsnWatcher : IDisposable
     readonly CancellationTokenSource _cts = new();
     readonly Thread _thread;
 
-    /// <summary>Eklenen, değişen, silinen ya da adı değişen arşiv dosyasının tam yolu.</summary>
+    /// <summary>Full path of an archive file that was added, changed, deleted or renamed.</summary>
     public event Action<string>? PathChanged;
 
-    /// <summary>Taşınan, adı değişen ya da silinen klasörün tam yolu (altındaki arşivler yeniden denetlenmeli).</summary>
+    /// <summary>Full path of a folder that was moved, renamed or deleted (the archives under it must be rechecked).</summary>
     public event Action<string>? DirectoryChanged;
 
-    /// <summary>Üst klasörü artık bulunamayan (birlikte silinmiş) öğenin adı.</summary>
+    /// <summary>Name of an item whose parent folder can no longer be found (deleted along with it).</summary>
     public event Action<string>? NameRemoved;
 
-    /// <summary>Journal silindi/taştı: tam yeniden tarama gerekir.</summary>
+    /// <summary>The journal was deleted or overflowed: a full rescan is required.</summary>
     public event Action<string>? ResetRequired;
 
     public long CurrentUsn { get; private set; }
@@ -75,14 +75,14 @@ public sealed class UsnWatcher : IDisposable
             catch (Win32Exception ex) when (ex.NativeErrorCode is NtfsVolume.ERROR_JOURNAL_ENTRY_DELETED
                                                or NtfsVolume.ERROR_JOURNAL_NOT_ACTIVE
                                                or NtfsVolume.ERROR_JOURNAL_DELETE_IN_PROGRESS
-                                               or 87 /* ERROR_INVALID_PARAMETER: journal kimliği değişti */)
+                                               or 87 /* ERROR_INVALID_PARAMETER: the journal ID changed */)
             {
-                ResetRequired?.Invoke($"{_volume.Root} USN Journal sıfırlandı ({ex.Message})");
+                ResetRequired?.Invoke($"{_volume.Root} USN Journal was reset ({ex.Message})");
                 return;
             }
             catch (Exception ex)
             {
-                ResetRequired?.Invoke($"{_volume.Root} USN Journal okunamadı ({ex.Message})");
+                ResetRequired?.Invoke($"{_volume.Root} USN Journal could not be read ({ex.Message})");
                 return;
             }
             ct.WaitHandle.WaitOne(1000);
@@ -100,7 +100,7 @@ public sealed class UsnWatcher : IDisposable
             if ((e.Reason & FileInteresting) == 0 || !ArchiveReader.IsArchiveName(e.Name)) return;
         }
 
-        // Kayıttaki ad, olay anındaki ad; üst klasörün güncel yolunu kimliğinden çözüyoruz.
+        // The name in the record is the name at the time of the event; we resolve the parent folder's current path from its ID.
         string? dir = _volume.PathFromId(e.ParentRef);
         if (dir == null)
         {

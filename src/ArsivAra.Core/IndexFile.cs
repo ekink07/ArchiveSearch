@@ -2,17 +2,17 @@ using System.IO.Compression;
 
 namespace ArsivAra.Core;
 
-/// <summary>İndeks dosyası tanınan bir sürüm değil (daha yeni bir Arşiv Ara yazmış olabilir).</summary>
-public sealed class IndexVersionException(int version) : IOException($"İndeks sürümü {version} desteklenmiyor")
+/// <summary>The index file is not a recognized version (a newer Arşiv Ara may have written it).</summary>
+public sealed class IndexVersionException(int version) : IOException($"Index version {version} is not supported")
 {
     public int Version { get; } = version;
 }
 
 /// <summary>
-/// İndeksi diske kaydeder/yükler (Brotli ile sıkıştırılmış ikili biçim).
-/// Sürüm 1: arşiv yolu, boyut, tarih, hata, girdiler (yol, boyut, tarih, klasör mü).
-/// Sürüm 2: + hata türü, elle eklendi/solid bayrakları, girdi CRC'si, iç içe arşivler.
-/// Eski sürüm okunup yeni sürümle yazılır; tanınmayan dosyanın üzerine asla yazılmaz (bkz. <see cref="LoadForUse"/>).
+/// Saves/loads the index to/from disk (Brotli-compressed binary format).
+/// Version 1: archive path, size, date, error, entries (path, size, date, is folder).
+/// Version 2: + error kind, manually-added/solid flags, entry CRC, nested archives.
+/// An older version is read and written back in the new version; an unrecognized file is never overwritten (see <see cref="LoadForUse"/>).
 /// </summary>
 public static class IndexFile
 {
@@ -62,13 +62,13 @@ public static class IndexFile
 
     public static List<ArchiveRecord> Load(string path) => LoadWithVersion(path).Archives;
 
-    /// <summary>Dosyayı okur; dosyanın sürümünü de döndürür (1 ise dönüştürülmüştür).</summary>
+    /// <summary>Reads the file; also returns the file's version (if 1, it has been converted).</summary>
     public static (List<ArchiveRecord> Archives, int Version) LoadWithVersion(string path)
     {
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
         using var br = new BrotliStream(fs, CompressionMode.Decompress);
         using var r = new BinaryReader(new BufferedStream(br, 1 << 16));
-        if (r.ReadInt32() != Magic) throw new InvalidDataException("İndeks dosyası tanınmadı");
+        if (r.ReadInt32() != Magic) throw new InvalidDataException("Index file not recognized");
         int version = r.ReadInt32();
         if (version is < 1 or > CurrentVersion) throw new IndexVersionException(version);
 
@@ -105,7 +105,7 @@ public static class IndexFile
         };
     }
 
-    /// <summary>Sürüm 1: hata türü metinden çıkarılır, klasör yolları '/' ile bitirilir, tüm arşivler elle eklenmiştir.</summary>
+    /// <summary>Version 1: the error kind is inferred from the text, folder paths get a trailing '/', and all archives were added manually.</summary>
     static ArchiveRecord ReadV1(BinaryReader r)
     {
         string p = r.ReadString();
@@ -129,6 +129,8 @@ public static class IndexFile
         };
     }
 
+    // Version-1 files stored only the (Turkish) error text, so the kind is recovered from it.
+    // These literals match texts already written to users' files and must not be translated.
     static ArchiveError KindFromV1Text(string err) =>
         err.Contains("Şifreli", StringComparison.OrdinalIgnoreCase) ? ArchiveError.Encrypted
         : err.Contains("Erişim engellendi", StringComparison.OrdinalIgnoreCase) ? ArchiveError.AccessDenied
@@ -136,9 +138,9 @@ public static class IndexFile
         : ArchiveError.Other;
 
     /// <summary>
-    /// Uygulamanın kullandığı güvenli yükleme:
-    /// eski sürüm dosya okunur ve ilk kez "index.bin.v1.bak" olarak yedeklenir (bir sonraki kayıt yeni sürümle yazar);
-    /// okunamayan ya da daha yeni sürümlü dosya "index.bin.okunamadi-....bak" adıyla kenara alınır, böylece üzerine yazılmaz.
+    /// The safe load used by the application:
+    /// an older-version file is read and, the first time, backed up as "index.bin.v1.bak" (the next save writes the new version);
+    /// an unreadable or newer-version file is moved aside as "index.bin.okunamadi-....bak", so it is not overwritten.
     /// </summary>
     public static (List<ArchiveRecord> Archives, LoadStatus Status, string? Backup) LoadForUse(string path)
     {
@@ -149,7 +151,7 @@ public static class IndexFile
             if (version == CurrentVersion) return (list, LoadStatus.Ok, null);
             string backup = $"{path}.v{version}.bak";
             if (!File.Exists(backup)) File.Copy(path, backup);
-            Log.Info($"İndeks sürüm {version}'den {CurrentVersion}'ye dönüştürüldü, yedek: {backup}");
+            Log.Info($"Index converted from version {version} to {CurrentVersion}, backup: {backup}");
             return (list, LoadStatus.Migrated, backup);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
@@ -157,12 +159,12 @@ public static class IndexFile
             string? backup = $"{path}.okunamadi-{DateTime.Now:yyyyMMdd-HHmmss}.bak";
             try { File.Move(path, backup); }
             catch (Exception) { backup = null; }
-            Log.Error($"İndeks okunamadı; kenara alındı: {backup ?? "(taşınamadı)"}", ex);
+            Log.Error($"Could not read index; moved aside: {backup ?? "(could not be moved)"}", ex);
             return ([], LoadStatus.Unreadable, backup);
         }
     }
 
-    /// <summary>Komut satırı aracı için: okunamazsa boş liste.</summary>
+    /// <summary>For the command-line tool: an empty list if the file cannot be read.</summary>
     public static List<ArchiveRecord> TryLoad(string path)
     {
         try { return File.Exists(path) ? Load(path) : []; }

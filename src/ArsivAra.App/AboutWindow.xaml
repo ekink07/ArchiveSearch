@@ -19,7 +19,7 @@
         <TextBlock x:Name="ManufacturerText" HorizontalAlignment="Center" Opacity="0.75" Margin="0,4,0,0"
                    AutomationProperties.AutomationId="AboutManufacturer" />
 
-        <!-- Lisans: türü, kısa özeti, telif sahibi, üçüncü taraf bileşenler; tam metin ayrı pencerede -->
+        <!-- License: type, short summary, copyright holder, third-party components; full text in a separate window -->
         <Border Margin="0,20,0,0" Padding="16,14" CornerRadius="8" BorderThickness="1"
                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
@@ -40,7 +40,7 @@
             </StackPanel>
         </Border>
 
-        <!-- IsCancel: tıklayınca ya da Esc ile kapanır -->
+        <!-- IsCancel: closes on click or with Esc -->
         <Button Content="{l:T OK}" IsDefault="True" IsCancel="True" MinWidth="104" Padding="16,6"
                 HorizontalAlignment="Center" Margin="0,20,0,0" Style="{DynamicResource AccentButtonStyle}"
                 AutomationProperties.AutomationId="AboutOk" />

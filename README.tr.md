@@ -10,14 +10,14 @@ Arşivlerinizi bırakın (ya da hepsini buldurun), birkaç harf yazın, eşleşe
 
 [English](README.md) · **Türkçe** · [Deutsch](README.de.md) · [Español](README.es.md)
 
-[![Sürüm](https://img.shields.io/github/v/release/YOUR_GITHUB_USER/ArsivAra?color=F7861F&label=s%C3%BCr%C3%BCm)](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest)
-[![İndirme](https://img.shields.io/github/downloads/YOUR_GITHUB_USER/ArsivAra/total?color=0F6BBF&label=indirme)](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases)
-[![CI](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml)
+[![Sürüm](https://img.shields.io/github/v/release/ekink07/ArchiveSearch?color=F7861F&label=s%C3%BCr%C3%BCm)](https://github.com/ekink07/ArchiveSearch/releases/latest)
+[![İndirme](https://img.shields.io/github/downloads/ekink07/ArchiveSearch/total?color=0F6BBF&label=indirme)](https://github.com/ekink07/ArchiveSearch/releases)
+[![CI](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
 ![x64 | ARM64](https://img.shields.io/badge/x64%20%7C%20ARM64-0B1B2E)
 [![Lisans: MIT](https://img.shields.io/badge/lisans-MIT-0B1B2E)](#lisans)
 
-<img src="docs/images/search.png" width="860" alt="'toplanti' araması iki yedekteki toplantı notlarını buluyor, biri iç içe arşivde; önizleme paneli metni ve iki sürümü gösteriyor">
+<img src="docs/images/search.png" width="860" alt="'meeting' araması iki yedekteki toplantı notlarını buluyor, biri iç içe arşivde; önizleme paneli metni ve iki sürümü gösteriyor">
 
 </div>
 
@@ -42,7 +42,7 @@ Arşiv Ara arşivlerin yalnızca içindekiler listesini okur, bellekte tutar ve 
 | **Çıkar ve sürükle** | `Ctrl + E` seçilenleri bir klasöre çıkarır; sonuçları doğrudan Gezgin'e sürükleyebilirsiniz. |
 | **Liste, kareler, sıralama** | Windows simgeleri, fotoğraf küçük resimleri, `Ctrl + tekerlek` ile 16–256 px. Sütun başlığına tıklayıp ada, klasöre, boyuta, tarihe ya da arşive göre sıralayın. |
 | **Güvenli** | Çıkarılan dosyalar arşivin "web işaretini" (Mark of the Web) korur; program ve betikler (`.exe`, `.js`, `.ps1`…) açılmadan önce onay ister. Tamamen çevrimdışı. |
-| **Taşınabilir, 4 dil** | x64 ya da ARM64 için tek exe; kurulum ve .NET gerekmez. Türkçe, English, Deutsch, Español. |
+| **Taşınabilir, 4 dil** | x64 ya da ARM64 için tek exe; kurulum ve .NET gerekmez. Varsayılan dil İngilizce; Türkçe, Deutsch ve Español *Ayarlar*dan seçilir. |
 
 ## Kurulum
 
@@ -50,13 +50,13 @@ Arşiv Ara arşivlerin yalnızca içindekiler listesini okur, bellekte tutar ve 
 Başlat menüsüne ve *Ayarlar › Uygulamalar* listesine ekler (kaldırma da oradan). Yönetici yetkisi gerekmez.
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1 | iex
 ```
 
 Seçeneklerle (`-Desktop` masaüstü kısayolu, `-Uninstall` kaldırma, `-Uninstall -RemoveData` ayarlar ve kütüphaneyle birlikte kaldırma):
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Desktop
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Desktop
 ```
 
 **winget**
@@ -65,7 +65,7 @@ Seçeneklerle (`-Desktop` masaüstü kısayolu, `-Uninstall` kaldırma, `-Uninst
 winget install VerloraStudios.ArsivAra
 ```
 
-**Elle**: [son sürümden](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest) `ArsivAra.exe` (x64) ya da `ArsivAra-arm64.exe` dosyasını indirip çalıştırın.
+**Elle**: [son sürümden](https://github.com/ekink07/ArchiveSearch/releases/latest) `ArsivAra.exe` (x64) ya da `ArsivAra-arm64.exe` dosyasını indirip çalıştırın.
 
 **Taşınabilir**: exe'nin yanına boş bir `portable.txt` koyarsanız (ya da USB bellekten çalıştırırsanız) ayarlar ve kütüphane yanındaki
 `ArsivAra-veri` klasöründe tutulur. Aksi hâlde `%LOCALAPPDATA%\ArsivAra` içindedir.
@@ -128,7 +128,7 @@ Kenar çubuğunda bir arşive tıklarsanız arama yalnızca onun içinde yapıl�
 Windows'ta [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) gerekir (`winget install Microsoft.DotNet.SDK.10`); `global.json` onu seçer.
 
 ```powershell
-git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
+git clone https://github.com/ekink07/ArchiveSearch.git
 cd ArsivAra
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # gerçek örnek arşivlerle birim testleri
@@ -148,11 +148,11 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `src/ArsivAra.Cli` | Komut satırı aracı: `index`, `search`, `extract`, `watch`, `lisans` |
 | `src/ThirdParty` | SharpCompress 0.50.4 kaynak kodu (RAR, 7z, TAR, XZ, BZip2 ve Zstandard çözücüleri), bkz. [README](src/ThirdParty/README.md) |
 | `tests/` | WinRAR, 7-Zip ve IMAPI2 ile üretilmiş örnek arşivlerle xUnit testleri; arayüz duman testi |
-| `tools/` | Simgeler, ekran görüntüleri ve paylaşım kartı, test arşivleri, `YOUR_GITHUB_USER` yer tutucuları için `set-github-user.ps1` |
+| `tools/` | Simgeler, ekran görüntüleri ve paylaşım kartı, test arşivleri, bağlantıları başka bir GitHub hesabına ya da depoya yönlendiren `set-github-user.ps1` |
 
 Her gönderimde [CI iş akışı](.github/workflows/ci.yml) çalışır. `v1.1.0` gibi bir etiket gönderildiğinde testler çalışır, x64 ve ARM64 exe'leri derlenir,
 imzalama sırları tanımlıysa imzalanır, GitHub'da sürüm yayınlanır
-ve winget güncellenir ([iş akışı](.github/workflows/release.yml)). Adım adım yayın, winget ve kod imzalama rehberi: [packaging/README.md](packaging/README.md).
+ve winget güncellenir ([iş akışı](.github/workflows/release.yml)). Adım adım yayın, winget ve kod imzalama rehberi (İngilizce): [packaging/README.md](packaging/README.md).
 
 ## Sınırlar
 

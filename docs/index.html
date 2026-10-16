@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,13 +12,13 @@
 <meta property="og:site_name" content="Arşiv Ara">
 <meta property="og:title" content="Arşiv Ara: search inside archives without extracting them">
 <meta property="og:description" content="ZIP, RAR, 7z, TAR and ISO. Instant search, preview, nested archives. Free and open source for Windows.">
-<meta property="og:url" content="https://YOUR_GITHUB_USER.github.io/ArsivAra/">
-<meta property="og:image" content="https://YOUR_GITHUB_USER.github.io/ArsivAra/images/og.png">
+<meta property="og:url" content="https://ekink07.github.io/ArchiveSearch/">
+<meta property="og:image" content="https://ekink07.github.io/ArchiveSearch/images/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Arşiv Ara logo and a search across several archives">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://YOUR_GITHUB_USER.github.io/ArsivAra/images/og.png">
+<meta name="twitter:image" content="https://ekink07.github.io/ArchiveSearch/images/og.png">
 <link rel="icon" href="images/icon-64.png" type="image/png" sizes="64x64">
 <link rel="icon" href="images/logo-arsiv.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,8 +33,8 @@
   "operatingSystem": "Windows 10, Windows 11",
   "applicationCategory": "UtilitiesApplication",
   "description": "Search inside ZIP, RAR, 7z, TAR and ISO archives instantly, without extracting them.",
-  "image": "https://YOUR_GITHUB_USER.github.io/ArsivAra/images/og.png",
-  "downloadUrl": "https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest",
+  "image": "https://ekink07.github.io/ArchiveSearch/images/og.png",
+  "downloadUrl": "https://github.com/ekink07/ArchiveSearch/releases/latest",
   "license": "https://opensource.org/license/mit",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "author": { "@type": "Person", "name": "MaledictusMaggot" },
@@ -42,8 +42,8 @@
 }
 </script>
 <style>
-/* Layout: "arşivin içindekiler listesi" — sayfa, bir arşivin merkezi dizini gibi satırlar, sütunlar ve eşleşme vurgularıyla kurulu.
-   Renkler logodan (images/logo-arsiv.svg): lacivert gövde, mavi "ARA" rozeti, turuncu ok, kehribar klasörler. */
+/* Layout: "an archive's table of contents": the page is built like an archive's central directory, with rows, columns and match highlights.
+   Colors come from the logo (images/logo-arsiv.svg): navy body, blue "ARA" badge, orange arrow, amber folders. */
 :root {
   --bg: #F2F5F8;
   --panel: #FFFFFF;
@@ -108,10 +108,10 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.
 p { margin: 0; }
 .eyebrow { font: 600 var(--step--1)/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
 code { font-family: var(--font-mono); font-size: 0.88em; }
-/* JetBrains Mono ">=" gibi dizileri birleşik çizer; sorgu örnekleri yazıldığı gibi görünsün */
+/* JetBrains Mono draws sequences such as ">=" as ligatures; show query examples exactly as typed */
 code, pre, input, .chips button, table.listing { font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; }
 
-/* Üst çubuk */
+/* Top bar */
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 var(--step-1)/1 var(--font-display); }
@@ -135,7 +135,7 @@ code, pre, input, .chips button, table.listing { font-variant-ligatures: none; f
 .alt-dl { font-size: var(--step--1); color: var(--muted); }
 .facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: var(--muted); font: 500 var(--step--1)/1.4 var(--font-mono); }
 
-/* Canlı demo: uygulama penceresinin sade bir kopyası */
+/* Live demo: a simplified copy of the app window */
 .demo { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
 .demo-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .demo-bar img { width: 18px; height: 18px; }
@@ -157,27 +157,27 @@ table.listing { width: 100%; border-collapse: collapse; font: 400 0.82rem/1.35 v
 .listing mark { background: var(--hit); color: var(--hit-ink); border-radius: 2px; padding: 0 1px; }
 .demo-foot { display: flex; justify-content: space-between; gap: 12px; padding: 9px 14px; border-top: 1px solid var(--line); font: 500 0.75rem/1.2 var(--font-mono); color: var(--muted); }
 
-/* Bölümler */
+/* Sections */
 section.block { padding-block: 64px; border-top: 1px solid var(--line); }
 .block-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-bottom: 28px; max-width: 46em; }
 .block-head h2 { font-size: var(--step-2); }
 .block-head p { color: var(--muted); }
 
-/* Ekran görüntüleri */
+/* Screenshots */
 .shots { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
 .shots figure { margin: 0; display: grid; gap: 8px; min-width: 0; align-content: start; }
 .shots .side { display: grid; gap: 16px; align-content: start; }
 .shots img { display: block; width: 100%; height: auto; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .shots figcaption { font-size: var(--step--1); color: var(--muted); }
 
-/* Özellikler: teknik föy gibi iki sütun */
+/* Features: two columns like a spec sheet */
 .specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
 .spec { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 14px; padding-block: 16px; border-bottom: 1px solid var(--line); }
 .spec dt { font: 700 var(--step-0)/1.35 var(--font-display); }
 .spec dd { margin: 0; color: var(--muted); }
 .spec dd code, .how code, .syntax code, .lic code { color: var(--ink); background: color-mix(in srgb, var(--hit) 35%, transparent); padding: 1px 4px; border-radius: 4px; }
 
-/* Arama dili */
+/* Search syntax */
 .syntax-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
 table.syntax { width: 100%; border-collapse: collapse; }
 .syntax th, .syntax td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -188,7 +188,7 @@ table.syntax { width: 100%; border-collapse: collapse; }
 .syntax td:last-child { color: var(--muted); }
 .syntax-note { margin-top: 14px; color: var(--muted); font-size: var(--step--1); }
 
-/* Kurulum */
+/* Install */
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
 .tabs button { border: 0; background: transparent; color: var(--muted); font: 600 var(--step-0)/1 var(--font-body); padding: 12px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
@@ -201,7 +201,7 @@ table.syntax { width: 100%; border-collapse: collapse; }
 .tab-panel .note { color: var(--muted); font-size: var(--step--1); }
 .dl-row { display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* Nasıl hızlı */
+/* Why it is fast */
 .how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .how article { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
 .how .fig { font: 700 var(--step-2)/1 var(--font-display); color: var(--accent); }
@@ -211,7 +211,7 @@ table.syntax { width: 100%; border-collapse: collapse; }
 .stack { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
 .stack span { font: 500 0.78rem/1 var(--font-mono); border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; color: var(--muted); }
 
-/* Lisans */
+/* License */
 .lic { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: start; }
 .lic-terms { display: grid; gap: 0; }
 .lic-term { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 12px; padding-block: 16px; border-bottom: 1px solid var(--line); }
@@ -248,7 +248,7 @@ footer .credit strong { font-weight: 600; }
   .top nav a.link { display: none; }
   .spec { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .listing th.arc, .listing td.arc { display: none; }
-  /* Dar ekranda sorgu ve açıklaması alt alta */
+  /* On narrow screens each query sits above its description */
   .syntax thead { display: none; }
   table.syntax, .syntax tbody { display: block; width: 100%; }
   .syntax tr { display: block; padding: 10px 14px; border-bottom: 1px solid var(--line); }
@@ -266,15 +266,15 @@ footer .credit strong { font-weight: 600; }
 <header class="top">
   <div class="wrap">
     <a class="brand" href="#top"><img src="images/logo-arsiv.svg" alt="">Arşiv Ara</a>
-    <nav aria-label="Sayfa">
-      <a class="link" href="#features" data-i18n="nav.features">Özellikler</a>
-      <a class="link" href="#syntax" data-i18n="nav.syntax">Arama dili</a>
-      <a class="link" href="#install" data-i18n="nav.install">Kurulum</a>
-      <a class="link" href="#license" data-i18n="nav.license">Lisans</a>
-      <a class="link" href="https://github.com/YOUR_GITHUB_USER/ArsivAra">GitHub</a>
-      <div class="langs" role="group" aria-label="Dil / Language">
-        <button type="button" data-lang="tr">TR</button>
+    <nav aria-label="Page">
+      <a class="link" href="#features" data-i18n="nav.features">Features</a>
+      <a class="link" href="#syntax" data-i18n="nav.syntax">Search syntax</a>
+      <a class="link" href="#install" data-i18n="nav.install">Install</a>
+      <a class="link" href="#license" data-i18n="nav.license">License</a>
+      <a class="link" href="https://github.com/ekink07/ArchiveSearch">GitHub</a>
+      <div class="langs" role="group" aria-label="Language">
         <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="tr">TR</button>
         <button type="button" data-lang="de">DE</button>
         <button type="button" data-lang="es">ES</button>
       </div>
@@ -286,38 +286,39 @@ footer .credit strong { font-weight: 600; }
   <section class="hero">
     <div class="wrap">
       <div>
-        <p class="eyebrow" data-i18n="hero.eyebrow">Windows · açık kaynak · ücretsiz</p>
-        <h1 data-i18n-html="hero.title">Arşivleri <em>açmadan</em> içinde ara.</h1>
-        <p class="lede" data-i18n="hero.lede">ZIP, RAR, 7z, TAR ve ISO dosyalarını pencereye bırakın, birkaç harf yazın. İç içe arşivler dahil her dosya adı milisaniyeler içinde listelenir; çift tıklayınca sadece o dosya açılır.</p>
+        <p class="eyebrow" data-i18n="hero.eyebrow">Windows · open source · free</p>
+        <h1 data-i18n-html="hero.title">Search inside archives <em>without extracting</em> them.</h1>
+        <p class="lede" data-i18n="hero.lede">Drop ZIP, RAR, 7z, TAR and ISO files onto the window and type a few letters. Every file name inside them, nested archives included, is listed in milliseconds; double-click opens just that one file.</p>
         <div class="ctas">
-          <a class="btn primary" href="https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest/download/ArsivAra.exe"><span data-i18n="hero.download">Windows için indir</span> <small>.exe · x64</small></a>
-          <a class="btn" href="https://github.com/YOUR_GITHUB_USER/ArsivAra" data-i18n="hero.source">Kaynak kodu</a>
-          <a class="alt-dl" href="https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest/download/ArsivAra-arm64.exe" data-i18n="hero.arm">ARM64 için indir</a>
+          <a class="btn primary" href="https://github.com/ekink07/ArchiveSearch/releases/latest/download/ArsivAra.exe"><span data-i18n="hero.download">Download for Windows</span> <small>.exe · x64</small></a>
+          <a class="btn" href="https://github.com/ekink07/ArchiveSearch" data-i18n="hero.source">Source code</a>
+          <a class="alt-dl" href="https://github.com/ekink07/ArchiveSearch/releases/latest/download/ArsivAra-arm64.exe" data-i18n="hero.arm">Download for ARM64</a>
         </div>
-        <p class="facts"><span data-i18n="hero.f1">Kurulum gerektirmez</span><span data-i18n="hero.f2">Tamamen çevrimdışı</span><span data-i18n="hero.f3">4 dil</span><span>MIT</span></p>
+        <p class="facts"><span data-i18n="hero.f1">No installation</span><span data-i18n="hero.f2">Fully offline</span><span data-i18n="hero.f3">4 languages</span><span>MIT</span></p>
       </div>
 
-      <div class="demo" aria-label="Canlı arama örneği">
-        <div class="demo-bar"><img src="images/logo-arsiv.svg" alt=""><span data-i18n="demo.title">Örnek: 4 arşiv, 36 dosya</span></div>
+      <div class="demo" aria-label="Live search example">
+        <div class="demo-bar"><img src="images/logo-arsiv.svg" alt=""><span data-i18n="demo.title">Example: 4 archives, 36 files</span></div>
         <div class="demo-search">
-          <label for="demo-q" data-i18n="demo.label">Arşivlerin içinde ara</label>
-          <input id="demo-q" type="search" autocomplete="off" spellcheck="false" placeholder="sirket, fatura|bordro, *.pdf !2024…">
+          <label for="demo-q" data-i18n="demo.label">Search inside archives</label>
+          <input id="demo-q" type="search" autocomplete="off" spellcheck="false" placeholder="report, invoice|payroll, *.pdf !2024…">
         </div>
-        <div class="chips" aria-label="Örnek sorgular">
-          <button type="button" data-q="sirket">sirket</button>
-          <button type="button" data-q="fatura|bordro">fatura|bordro</button>
+        <div class="chips" aria-label="Example queries">
+          <button type="button" data-q="report">report</button>
+          <button type="button" data-q="invoice|payroll">invoice|payroll</button>
           <button type="button" data-q="*.pdf !2024">*.pdf !2024</button>
-          <button type="button" data-q="&quot;hesap özeti&quot;">"hesap özeti"</button>
+          <button type="button" data-q="&quot;bank statement&quot;">"bank statement"</button>
+          <button type="button" data-q="goreme">goreme</button>
           <button type="button" data-q="ext:dwg;step">ext:dwg;step</button>
-          <button type="button" data-q="boyut:>3mb">boyut:&gt;3mb</button>
+          <button type="button" data-q="size:>3mb">size:&gt;3mb</button>
         </div>
         <div class="listing-scroll">
           <table class="listing">
-            <thead><tr><th data-i18n="demo.name">Ad</th><th class="size" data-i18n="demo.size">Boyut</th><th class="arc" data-i18n="demo.archive">Arşiv</th></tr></thead>
+            <thead><tr><th data-i18n="demo.name">Name</th><th class="size" data-i18n="demo.size">Size</th><th class="arc" data-i18n="demo.archive">Archive</th></tr></thead>
             <tbody id="demo-rows"></tbody>
           </table>
         </div>
-        <div class="demo-foot"><span id="demo-count"></span><span data-i18n="demo.hint">Büyük/küçük harf ve aksan duyarsız</span></div>
+        <div class="demo-foot"><span id="demo-count"></span><span data-i18n="demo.hint">Case and accent insensitive</span></div>
       </div>
     </div>
   </section>
@@ -325,22 +326,22 @@ footer .credit strong { font-weight: 600; }
   <section class="block" id="screens">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow" data-i18n="shots.eyebrow">Ekran görüntüleri</p>
-        <h2 data-i18n="shots.title">Liste, kareler ve önizleme</h2>
+        <p class="eyebrow" data-i18n="shots.eyebrow">Screenshots</p>
+        <h2 data-i18n="shots.title">List, grid and preview</h2>
       </div>
       <div class="shots">
         <figure>
-          <img src="images/search.png" width="1180" height="720" alt="'toplanti' araması iki arşivde 'Toplantı Notları.txt' buluyor; önizleme panelinde metin ve iki sürüm görünüyor" loading="lazy">
-          <figcaption data-i18n="shots.search">"toplanti" yazınca iki yedekteki "Toplantı Notları.txt" bulunur; biri iç içe arşivde. Önizleme metni ve hangi yedekte daha yeni olduğunu gösterir.</figcaption>
+          <img src="images/search.png" width="1180" height="720" alt="Searching 'meeting' finds Meeting Notes.txt in two backups, one inside a nested archive; the preview pane shows the text and both versions" loading="lazy">
+          <figcaption data-i18n="shots.search">Typing "meeting" finds "Meeting Notes.txt" in two backups, one of them inside a nested archive. The preview shows the text and which backup is newer.</figcaption>
         </figure>
         <div class="side">
           <figure>
-            <img src="images/grid.png" width="1180" height="720" alt="Fotoğraf küçük resimleriyle kareli görünüm" loading="lazy">
-            <figcaption data-i18n="shots.grid">Kareli görünüm: fotoğrafların kendisi, diğer dosyalarda Windows'taki simgeleri.</figcaption>
+            <img src="images/grid.png" width="1180" height="720" alt="Grid view with photo thumbnails" loading="lazy">
+            <figcaption data-i18n="shots.grid">Grid view: real photo thumbnails, Windows icons for everything else.</figcaption>
           </figure>
           <figure>
-            <img src="images/empty.png" width="1180" height="720" alt="Arşivleri sürükleyip bırakma ekranı" loading="lazy">
-            <figcaption data-i18n="shots.empty">İlk açılış: arşivleri ya da klasörleri bırakın veya tüm diskleri taratın.</figcaption>
+            <img src="images/empty.png" width="1180" height="720" alt="The first-start screen for dropping archives" loading="lazy">
+            <figcaption data-i18n="shots.empty">First start: drop archives or folders, or scan all disks.</figcaption>
           </figure>
         </div>
       </div>
@@ -350,22 +351,22 @@ footer .credit strong { font-weight: 600; }
   <section class="block" id="features">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow" data-i18n="feat.eyebrow">Özellikler</p>
-        <h2 data-i18n="feat.title">Everything'in dosya adlarında yaptığını, arşivlerin içinde yapar</h2>
+        <p class="eyebrow" data-i18n="feat.eyebrow">Features</p>
+        <h2 data-i18n="feat.title">What Everything does for file names, done inside your archives</h2>
       </div>
       <dl class="specs">
-        <div class="spec"><dt data-i18n="feat.drop.t">Sürükle-bırak ya da tüm diskler</dt><dd data-i18n="feat.drop.d">Arşivleri ya da klasörleri pencereye bırakın veya bilgisayardaki tüm arşivleri buldurun. Yeni ve değişen arşivler canlı izlenir.</dd></div>
-        <div class="spec"><dt data-i18n="feat.speed.t">Anında arama</dt><dd data-i18n="feat.speed.d">1 milyon dosya adında arama 2–20 ms sürer. Her tuşta sonuçlar güncellenir.</dd></div>
-        <div class="spec"><dt data-i18n="feat.syntax.t">Arama dili</dt><dd data-i18n-html="feat.syntax.d"><code>a|b</code> VEYA, <code>!taslak</code> DEĞİL, <code>"tam ifade"</code>, <code>*.pdf</code>, <code>boyut:&gt;10mb</code>, <code>tarih:2024</code>, <code>regex:</code>. Aramalar kaydedilebilir.</dd></div>
-        <div class="spec"><dt data-i18n="feat.tr.t">Türkçe duyarlı</dt><dd data-i18n-html="feat.tr.d"><code>sirket</code> yazınca <code>Şirket</code>, <code>istanbul</code> yazınca <code>İSTANBUL</code> bulunur. DOS (CP857) adlı eski ZIP'ler doğru okunur.</dd></div>
-        <div class="spec"><dt data-i18n="feat.formats.t">Biçimler ve iç içe arşivler</dt><dd data-i18n="feat.formats.d">ZIP, RAR (çok parçalı dahil), 7z, TAR (gz, bz2, xz, zst) ve ISO (UDF, Joliet). Zip içindeki zip de aranır.</dd></div>
-        <div class="spec"><dt data-i18n="feat.enc.t">Şifreli arşivler</dt><dd data-i18n="feat.enc.d">Parola sorulur; isterseniz Windows'un DPAPI korumasıyla hatırlanır. Başlığı şifreli RAR ve 7z de listelenir.</dd></div>
-        <div class="spec"><dt data-i18n="feat.preview.t">Önizleme</dt><dd data-i18n="feat.preview.d">Resimler, metin dosyaları ve Word, Excel, PowerPoint belgeleri arşivden çıkarmadan görünür.</dd></div>
-        <div class="spec"><dt data-i18n="feat.versions.t">Sürümler, kopyalar, içerik</dt><dd data-i18n-html="feat.versions.d">Bir dosyanın en yeni sürümü hangi yedekte, <code>kopya:</code> ile aynı içerikli dosyalar, <code>icerik:</code> ile dosyaların içinde arama.</dd></div>
-        <div class="spec"><dt data-i18n="feat.open.t">Aç, çıkar, sürükle</dt><dd data-i18n="feat.open.d">Çift tıklayınca sadece o dosya çıkarılıp açılır. Seçilenleri bir klasöre çıkarın ya da Gezgin'e sürükleyin.</dd></div>
-        <div class="spec"><dt data-i18n="feat.view.t">Simgeler ve sıralama</dt><dd data-i18n="feat.view.d">Her dosya Windows'taki simgesiyle, kareli görünümde fotoğrafların kendisiyle görünür. Sütun başlığına tıklayıp ada, boyuta ya da tarihe göre sıralayın.</dd></div>
-        <div class="spec"><dt data-i18n="feat.safe.t">Güvenli ve gizli</dt><dd data-i18n="feat.safe.d">İnternetten inen arşivlerden çıkarılan dosyalar "web işaretini" (MOTW) korur; .exe, .js gibi türler açılmadan önce onay ister. Program internete hiç bağlanmaz.</dd></div>
-        <div class="spec"><dt data-i18n="feat.portable.t">Taşınabilir, 4 dil</dt><dd data-i18n="feat.portable.d">Tek exe; kurulum ve .NET gerekmez, USB bellekte ayarlarıyla taşınır. Türkçe, English, Deutsch, Español. x64 ve ARM64.</dd></div>
+        <div class="spec"><dt data-i18n="feat.drop.t">Drag and drop, or whole disks</dt><dd data-i18n="feat.drop.d">Drop archives or folders onto the window, or let it find every archive on your computer. New and changed archives are picked up live.</dd></div>
+        <div class="spec"><dt data-i18n="feat.speed.t">Instant search</dt><dd data-i18n="feat.speed.d">Searching 1 million file names takes 2–20 ms. Results update on every keystroke.</dd></div>
+        <div class="spec"><dt data-i18n="feat.syntax.t">Search syntax</dt><dd data-i18n-html="feat.syntax.d"><code>a|b</code> OR, <code>!draft</code> NOT, <code>"exact phrase"</code>, <code>*.pdf</code>, <code>size:&gt;10mb</code>, <code>date:2024</code>, <code>regex:</code>. Searches can be saved.</dd></div>
+        <div class="spec"><dt data-i18n="feat.tr.t">Accent aware</dt><dd data-i18n-html="feat.tr.d"><code>sirket</code> finds <code>Şirket</code>, <code>istanbul</code> finds <code>İSTANBUL</code>. Old ZIPs with DOS (CP857) file names are decoded correctly.</dd></div>
+        <div class="spec"><dt data-i18n="feat.formats.t">Formats and nested archives</dt><dd data-i18n="feat.formats.d">ZIP, RAR (including multi-part), 7z, TAR (gz, bz2, xz, zst) and ISO (UDF, Joliet). A zip inside a zip is searched too.</dd></div>
+        <div class="spec"><dt data-i18n="feat.enc.t">Encrypted archives</dt><dd data-i18n="feat.enc.d">You are asked for the password, and it can be remembered with Windows DPAPI protection. RAR and 7z with encrypted headers are listed too.</dd></div>
+        <div class="spec"><dt data-i18n="feat.preview.t">Preview</dt><dd data-i18n="feat.preview.d">Images, text files and Word, Excel and PowerPoint documents are shown without extracting the archive.</dd></div>
+        <div class="spec"><dt data-i18n="feat.versions.t">Versions, duplicates, contents</dt><dd data-i18n-html="feat.versions.d">See which backup holds the newest version of a file, find identical files with <code>dupe:</code> and search inside files with <code>content:</code>.</dd></div>
+        <div class="spec"><dt data-i18n="feat.open.t">Open, extract, drag</dt><dd data-i18n="feat.open.d">Double-click extracts and opens just that file. Extract a selection to a folder or drag it into Explorer.</dd></div>
+        <div class="spec"><dt data-i18n="feat.view.t">Icons and sorting</dt><dd data-i18n="feat.view.d">Every file shows its Windows icon, and the grid shows the photos themselves. Click a column header to sort by name, size or date.</dd></div>
+        <div class="spec"><dt data-i18n="feat.safe.t">Safe and private</dt><dd data-i18n="feat.safe.d">Files extracted from downloaded archives keep the Mark of the Web, and types such as .exe or .js ask before opening. The app never connects to the internet.</dd></div>
+        <div class="spec"><dt data-i18n="feat.portable.t">Portable, 4 languages</dt><dd data-i18n="feat.portable.d">One exe, no installation or .NET needed; it travels on a USB stick with its settings. English by default, plus Türkçe, Deutsch and Español. x64 and ARM64.</dd></div>
       </dl>
     </div>
   </section>
@@ -373,60 +374,60 @@ footer .credit strong { font-weight: 600; }
   <section class="block" id="syntax">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow" data-i18n="syn.eyebrow">Arama dili</p>
-        <h2 data-i18n="syn.title">Kelimeler yeter; gerekince filtreler</h2>
-        <p data-i18n="syn.lede">Büyük/küçük harf ve aksan fark etmez. Programda arama kutusunun yanındaki ? düğmesi aynı listeyi gösterir.</p>
+        <p class="eyebrow" data-i18n="syn.eyebrow">Search syntax</p>
+        <h2 data-i18n="syn.title">Words are enough; filters when you need them</h2>
+        <p data-i18n="syn.lede">Case and accents never matter. In the app, the ? button next to the search box shows the same list.</p>
       </div>
       <div class="syntax-scroll">
         <table class="syntax">
-          <thead><tr><th data-i18n="syn.q">Sorgu</th><th data-i18n="syn.m">Ne bulur</th></tr></thead>
+          <thead><tr><th data-i18n="syn.q">Query</th><th data-i18n="syn.m">What it finds</th></tr></thead>
           <tbody>
-            <tr><td data-i18n-html="syn.and.q"><code>fatura 2024</code></td><td data-i18n="syn.and.m">İki kelime de geçmeli (VE)</td></tr>
-            <tr><td data-i18n-html="syn.or.q"><code>rapor|sunum</code></td><td data-i18n="syn.or.m">Biri yeterli (VEYA)</td></tr>
-            <tr><td data-i18n-html="syn.not.q"><code>!taslak</code></td><td data-i18n="syn.not.m">Bunu içermeyenler (DEĞİL)</td></tr>
-            <tr><td data-i18n-html="syn.phrase.q"><code>"hesap özeti"</code></td><td data-i18n="syn.phrase.m">Tam ifade, boşluk dahil</td></tr>
-            <tr><td><code>*.pdf</code><code>IMG_00??.jpg</code></td><td data-i18n="syn.glob.m">Joker karakterler, dosya adında</td></tr>
-            <tr><td><code>ext:pdf;docx</code></td><td data-i18n="syn.ext.m">Uzantıya göre</td></tr>
-            <tr><td data-i18n-html="syn.arc.q"><code>arsiv:2025</code></td><td data-i18n="syn.arc.m">Sadece adı ya da yolu bunu içeren arşivlerde</td></tr>
-            <tr><td data-i18n-html="syn.kind.q"><code>klasor:</code><code>dosya:</code></td><td data-i18n="syn.kind.m">Sadece klasörler / sadece dosyalar</td></tr>
-            <tr><td data-i18n-html="syn.name.q"><code>ad:="Rapor.pdf"</code></td><td data-i18n="syn.name.m">Tam dosya adı</td></tr>
-            <tr><td data-i18n-html="syn.size.q"><code>boyut:&gt;10mb</code><code>boyut:1mb..1gb</code></td><td data-i18n="syn.size.m">Boyut</td></tr>
-            <tr><td data-i18n-html="syn.date.q"><code>tarih:2024</code><code>tarih:&gt;=2024-06-01</code><code>tarih:buhafta</code></td><td data-i18n="syn.date.m">Değiştirilme tarihi</td></tr>
-            <tr><td data-i18n-html="syn.regex.q"><code>regex:^fatura_\d+</code></td><td data-i18n="syn.regex.m">Düzenli ifade</td></tr>
-            <tr><td data-i18n-html="syn.dupe.q"><code>kopya:</code></td><td data-i18n="syn.dupe.m">Aynı içerikli kopyalar (boyut ve CRC)</td></tr>
-            <tr><td data-i18n-html="syn.content.q"><code>icerik:zümrüt</code></td><td data-i18n="syn.content.m">Dosyaların içinde: metin ve Office belgeleri (yavaş, diğer koşullarla daraltın)</td></tr>
+            <tr><td data-i18n-html="syn.and.q"><code>invoice 2024</code></td><td data-i18n="syn.and.m">Both words must appear (AND)</td></tr>
+            <tr><td data-i18n-html="syn.or.q"><code>report|slides</code></td><td data-i18n="syn.or.m">Either one (OR)</td></tr>
+            <tr><td data-i18n-html="syn.not.q"><code>!draft</code></td><td data-i18n="syn.not.m">Everything without it (NOT)</td></tr>
+            <tr><td data-i18n-html="syn.phrase.q"><code>"bank statement"</code></td><td data-i18n="syn.phrase.m">Exact phrase, spaces included</td></tr>
+            <tr><td><code>*.pdf</code><code>IMG_00??.jpg</code></td><td data-i18n="syn.glob.m">Wildcards, on the file name</td></tr>
+            <tr><td><code>ext:pdf;docx</code></td><td data-i18n="syn.ext.m">By extension</td></tr>
+            <tr><td data-i18n-html="syn.arc.q"><code>archive:2025</code></td><td data-i18n="syn.arc.m">Only in archives whose name or path contains it</td></tr>
+            <tr><td data-i18n-html="syn.kind.q"><code>folder:</code><code>file:</code></td><td data-i18n="syn.kind.m">Only folders / only files</td></tr>
+            <tr><td data-i18n-html="syn.name.q"><code>name:="Report.pdf"</code></td><td data-i18n="syn.name.m">Exact file name</td></tr>
+            <tr><td data-i18n-html="syn.size.q"><code>size:&gt;10mb</code><code>size:1mb..1gb</code></td><td data-i18n="syn.size.m">Size</td></tr>
+            <tr><td data-i18n-html="syn.date.q"><code>date:2024</code><code>date:&gt;=2024-06-01</code><code>date:thisweek</code></td><td data-i18n="syn.date.m">Modified date</td></tr>
+            <tr><td data-i18n-html="syn.regex.q"><code>regex:^invoice_\d+</code></td><td data-i18n="syn.regex.m">Regular expression</td></tr>
+            <tr><td data-i18n-html="syn.dupe.q"><code>dupe:</code></td><td data-i18n="syn.dupe.m">Identical copies (size and CRC)</td></tr>
+            <tr><td data-i18n-html="syn.content.q"><code>content:emerald</code></td><td data-i18n="syn.content.m">Inside files: text and Office documents (slow, narrow it down with other terms)</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="syntax-note" data-i18n="syn.note">Türkçe ve İngilizce anahtarların ikisi de çalışır: arsiv/archive, klasor/folder, dosya/file, ad/name, boyut/size, tarih/date, kopya/dupe, icerik/content.</p>
+      <p class="syntax-note" data-i18n="syn.note">Turkish and English keys both work: arsiv/archive, klasor/folder, dosya/file, ad/name, boyut/size, tarih/date, kopya/dupe, icerik/content.</p>
     </div>
   </section>
 
   <section class="block" id="install">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow" data-i18n="inst.eyebrow">Kurulum</p>
-        <h2 data-i18n="inst.title">Üç yoldan biriyle, bir dakikada</h2>
+        <p class="eyebrow" data-i18n="inst.eyebrow">Install</p>
+        <h2 data-i18n="inst.title">Pick one of three ways, done in a minute</h2>
       </div>
-      <div class="tabs" role="tablist" aria-label="Kurulum yöntemi">
+      <div class="tabs" role="tablist" aria-label="Install method">
         <button type="button" role="tab" id="tab-ps" aria-controls="panel-ps" aria-selected="true">PowerShell</button>
         <button type="button" role="tab" id="tab-winget" aria-controls="panel-winget" aria-selected="false">winget</button>
-        <button type="button" role="tab" id="tab-exe" aria-controls="panel-exe" aria-selected="false" data-i18n="inst.manual">Elle indir</button>
+        <button type="button" role="tab" id="tab-exe" aria-controls="panel-exe" aria-selected="false" data-i18n="inst.manual">Manual download</button>
       </div>
       <div class="tab-panel" role="tabpanel" id="panel-ps" aria-labelledby="tab-ps">
-        <div class="code"><pre><span class="prompt">PS&gt; </span><span class="cmd">irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex</span></pre><button type="button" class="copy" data-i18n="copy">Kopyala</button></div>
-        <p class="note" data-i18n="inst.ps.note">İşlemciye uygun (x64 ya da ARM64) son sürümü indirir, SHA256 ile doğrular, %LOCALAPPDATA%\Programs\ArsivAra içine koyar, Başlat menüsüne ve Yüklü uygulamalar listesine ekler. Yönetici yetkisi gerekmez.</p>
+        <div class="code"><pre><span class="prompt">PS&gt; </span><span class="cmd">irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1 | iex</span></pre><button type="button" class="copy" data-i18n="copy">Copy</button></div>
+        <p class="note" data-i18n="inst.ps.note">Downloads the latest release for your processor (x64 or ARM64), verifies its SHA256, places it in %LOCALAPPDATA%\Programs\ArsivAra and adds it to the Start menu and to Installed apps. No admin rights needed.</p>
       </div>
       <div class="tab-panel" role="tabpanel" id="panel-winget" aria-labelledby="tab-winget" hidden>
-        <div class="code"><pre><span class="prompt">PS&gt; </span><span class="cmd">winget install VerloraStudios.ArsivAra</span></pre><button type="button" class="copy" data-i18n="copy">Kopyala</button></div>
-        <p class="note" data-i18n="inst.winget.note">Windows'un kendi paket yöneticisiyle kurar ve günceller: winget upgrade VerloraStudios.ArsivAra</p>
+        <div class="code"><pre><span class="prompt">PS&gt; </span><span class="cmd">winget install VerloraStudios.ArsivAra</span></pre><button type="button" class="copy" data-i18n="copy">Copy</button></div>
+        <p class="note" data-i18n="inst.winget.note">Installs and updates with the Windows package manager: winget upgrade VerloraStudios.ArsivAra</p>
       </div>
       <div class="tab-panel" role="tabpanel" id="panel-exe" aria-labelledby="tab-exe" hidden>
         <p class="dl-row">
-          <a class="btn primary" href="https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest/download/ArsivAra.exe"><span data-i18n="hero.download">Windows için indir</span> <small>x64</small></a>
-          <a class="btn" href="https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest/download/ArsivAra-arm64.exe"><span data-i18n="hero.download">Windows için indir</span> <small>ARM64</small></a>
+          <a class="btn primary" href="https://github.com/ekink07/ArchiveSearch/releases/latest/download/ArsivAra.exe"><span data-i18n="hero.download">Download for Windows</span> <small>x64</small></a>
+          <a class="btn" href="https://github.com/ekink07/ArchiveSearch/releases/latest/download/ArsivAra-arm64.exe"><span data-i18n="hero.download">Download for Windows</span> <small>ARM64</small></a>
         </p>
-        <p class="note" data-i18n="inst.exe.note">İndirip çift tıklayın. USB belleğe kopyalayıp başka bilgisayarlarda da açabilirsiniz; exe'nin yanına "portable.txt" koyarsanız ayarlar da yanında durur. Windows 10/11.</p>
+        <p class="note" data-i18n="inst.exe.note">Download and double-click. Copy it to a USB stick to use it on other computers; put a "portable.txt" next to the exe to keep the settings there too. Windows 10/11.</p>
       </div>
     </div>
   </section>
@@ -434,27 +435,27 @@ footer .credit strong { font-weight: 600; }
   <section class="block" id="how">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow" data-i18n="how.eyebrow">Neden hızlı</p>
-        <h2 data-i18n="how.title">Arşivin verisine değil, içindekiler listesine bakar</h2>
+        <p class="eyebrow" data-i18n="how.eyebrow">Why it is fast</p>
+        <h2 data-i18n="how.title">It reads the table of contents, not the data</h2>
       </div>
       <div class="how">
         <article>
-          <p class="fig">ZIP <small data-i18n="how.zip.k">merkezi dizin</small></p>
-          <h3 data-i18n="how.zip.t">Sadece sondaki dizin okunur</h3>
-          <p data-i18n="how.zip.d">ZIP'in dosya listesi dosyanın sonunda tek blokta durur. Arşiv Ara o bloğu okur, sıkıştırılmış veriye hiç dokunmaz.</p>
+          <p class="fig">ZIP <small data-i18n="how.zip.k">central directory</small></p>
+          <h3 data-i18n="how.zip.t">Only the directory at the end is read</h3>
+          <p data-i18n="how.zip.d">A ZIP keeps its file list in one block at the end of the file. Arşiv Ara reads that block and never touches the compressed data.</p>
         </article>
         <article>
           <p class="fig">RAR5 <small>Quick Open</small></p>
-          <h3 data-i18n="how.rar.t">Dakikalar yerine saniyeler</h3>
-          <p data-i18n-html="how.rar.d">RAR her dosyanın başlığını verisinin önüne yazar; listelemek normalde dosya başına bir disk atlamasıdır. WinRAR bu başlıkların kopyasını arşivin sonuna da yazar. Arşiv Ara bu bloğu tek seferde okur ve her başlığı <code>CRC32</code> ile doğrular.</p>
+          <h3 data-i18n="how.rar.t">Seconds instead of minutes</h3>
+          <p data-i18n-html="how.rar.d">RAR writes each file header in front of its data, so listing normally costs one disk seek per file. WinRAR also stores a copy of those headers at the end; Arşiv Ara reads that block in one go and checks every header with <code>CRC32</code>.</p>
         </article>
         <article>
-          <p class="fig">2–20 ms <small data-i18n="how.search.k">1 milyon dosya adında</small></p>
-          <h3 data-i18n="how.search.t">Bellekte tek tampon</h3>
-          <p data-i18n-html="how.search.d">Tüm yollar küçük harfe çevrilip aksanları atılarak tek bir UTF-8 tampona yazılır; tampon vektörize <code>IndexOf</code> ile paralel taranır.</p>
+          <p class="fig">2–20 ms <small data-i18n="how.search.k">across 1 million file names</small></p>
+          <h3 data-i18n="how.search.t">One buffer in memory</h3>
+          <p data-i18n-html="how.search.d">Every path is lower-cased and stripped of accents into a single UTF-8 buffer, scanned in parallel with vectorized <code>IndexOf</code>.</p>
         </article>
       </div>
-      <div class="stack" aria-label="Kullanılan teknolojiler">
+      <div class="stack" aria-label="Technologies used">
         <span>C# 14 · .NET 10</span><span>WPF · Fluent</span><span>ZIP / RAR5 / ISO · UDF parsing</span><span>SIMD search</span><span>NTFS MFT · USN Journal</span><span>SharpCompress</span><span>xUnit · UI Automation</span><span>GitHub Actions</span>
       </div>
     </div>
@@ -463,29 +464,29 @@ footer .credit strong { font-weight: 600; }
   <section class="block" id="license">
     <div class="wrap">
       <div class="block-head">
-        <p class="eyebrow" data-i18n="lic.eyebrow">Lisans</p>
-        <h2 data-i18n="lic.title">MIT lisansı: ücretsiz ve açık kaynak</h2>
-        <p data-i18n="lic.lede">Arşiv Ara, MIT lisansıyla dağıtılır. Kişisel ve ticari kullanım ücretsizdir; kaynak kodu herkese açıktır.</p>
+        <p class="eyebrow" data-i18n="lic.eyebrow">License</p>
+        <h2 data-i18n="lic.title">MIT license: free and open source</h2>
+        <p data-i18n="lic.lede">Arşiv Ara is distributed under the MIT license. Personal and commercial use is free, and the source code is public.</p>
       </div>
       <div class="lic">
         <div class="lic-terms">
-          <div class="lic-term"><span class="mark" aria-hidden="true">✓</span><div><h3 data-i18n="lic.can.t">Serbest</h3><p data-i18n="lic.can.d">Kullanmak, kopyalamak, değiştirmek, birleştirmek, yayımlamak, dağıtmak, alt lisans vermek ve satmak.</p></div></div>
-          <div class="lic-term"><span class="mark" aria-hidden="true">§</span><div><h3 data-i18n="lic.must.t">Tek koşul</h3><p data-i18n="lic.must.d">Telif hakkı bildirimi ve lisans metni, yazılımın tüm kopyalarında korunmalıdır.</p></div></div>
-          <div class="lic-term"><span class="mark" aria-hidden="true">!</span><div><h3 data-i18n="lic.warranty.t">Garanti yok</h3><p data-i18n="lic.warranty.d">Yazılım olduğu gibi sunulur; herhangi bir garanti verilmez.</p></div></div>
+          <div class="lic-term"><span class="mark" aria-hidden="true">✓</span><div><h3 data-i18n="lic.can.t">You may</h3><p data-i18n="lic.can.d">Use, copy, modify, merge, publish, distribute, sublicense and sell it.</p></div></div>
+          <div class="lic-term"><span class="mark" aria-hidden="true">§</span><div><h3 data-i18n="lic.must.t">One condition</h3><p data-i18n="lic.must.d">Keep the copyright notice and the license text in all copies of the software.</p></div></div>
+          <div class="lic-term"><span class="mark" aria-hidden="true">!</span><div><h3 data-i18n="lic.warranty.t">No warranty</h3><p data-i18n="lic.warranty.d">The software is provided as is, without warranty of any kind.</p></div></div>
         </div>
         <div class="lic-card">
-          <div class="badge"><img src="images/logo-arsiv.svg" alt=""><div><strong>Arşiv Ara</strong><span data-i18n="lic.kind">MIT lisansı · sürüm 1.1.0</span></div></div>
+          <div class="badge"><img src="images/logo-arsiv.svg" alt=""><div><strong>Arşiv Ara</strong><span data-i18n="lic.kind">MIT license · version 1.1.0</span></div></div>
           <dl>
-            <dt data-i18n="lic.publisher">Üretici</dt><dd>Verlora Studios</dd>
-            <dt data-i18n="lic.creator">Yapımcı</dt><dd>Created By MaledictusMaggot®</dd>
-            <dt data-i18n="lic.copyright">Telif</dt><dd>© 2026 MaledictusMaggot</dd>
-            <dt data-i18n="lic.thirdparty">Üçüncü taraf</dt><dd data-i18n="lic.thirdparty.v">SharpCompress 0.50.4 kaynak kodu ve içerdiği bileşenler (MIT, unRAR, Ms-PL, Apache 2.0, BSD, zlib); .NET (MIT)</dd>
+            <dt data-i18n="lic.publisher">Publisher</dt><dd>Verlora Studios</dd>
+            <dt data-i18n="lic.creator">Creator</dt><dd>Created By MaledictusMaggot®</dd>
+            <dt data-i18n="lic.copyright">Copyright</dt><dd>© 2026 MaledictusMaggot</dd>
+            <dt data-i18n="lic.thirdparty">Third party</dt><dd data-i18n="lic.thirdparty.v">SharpCompress 0.50.4 source code and the components it includes (MIT, UnRAR, Ms-PL, Apache 2.0, BSD, zlib); .NET (MIT)</dd>
           </dl>
           <p class="links">
-            <a href="https://github.com/YOUR_GITHUB_USER/ArsivAra/blob/main/LICENSE" data-i18n="lic.link.license">Lisans metni (LICENSE)</a>
-            <a href="https://github.com/YOUR_GITHUB_USER/ArsivAra/blob/main/THIRD-PARTY-NOTICES.txt" data-i18n="lic.link.notices">Üçüncü taraf lisansları</a>
+            <a href="https://github.com/ekink07/ArchiveSearch/blob/main/LICENSE" data-i18n="lic.link.license">License text (LICENSE)</a>
+            <a href="https://github.com/ekink07/ArchiveSearch/blob/main/THIRD-PARTY-NOTICES.txt" data-i18n="lic.link.notices">Third-party licenses</a>
           </p>
-          <p class="note" data-i18n="lic.note">Programın içinde de: Hakkında › Lisans metni.</p>
+          <p class="note" data-i18n="lic.note">Also inside the app: About › License text.</p>
         </div>
       </div>
     </div>
@@ -494,15 +495,15 @@ footer .credit strong { font-weight: 600; }
 
 <footer>
   <div class="wrap">
-    <span><span data-i18n="foot.license">© 2026 MaledictusMaggot · MIT lisansı</span> · <a href="#license" data-i18n="foot.publisher">Üretici: Verlora Studios</a></span>
+    <span><span data-i18n="foot.license">© 2026 MaledictusMaggot · MIT license</span> · <a href="#license" data-i18n="foot.publisher">Publisher: Verlora Studios</a></span>
     <span class="credit"><img src="images/logo-arsiv.svg" alt=""><span>Created By <strong>MaledictusMaggot®</strong></span></span>
-    <span><a href="https://github.com/YOUR_GITHUB_USER/ArsivAra">github.com/YOUR_GITHUB_USER/ArsivAra</a></span>
+    <span><a href="https://github.com/ekink07/ArchiveSearch">github.com/ekink07/ArchiveSearch</a></span>
   </div>
 </footer>
 
 <script>
 (() => {
-  // ---- Çeviriler ----
+  // ---- Translations ----
   const T = {
     tr: {
       "nav.features": "Özellikler", "nav.syntax": "Arama dili", "nav.install": "Kurulum", "nav.license": "Lisans",
@@ -516,7 +517,7 @@ footer .credit strong { font-weight: 600; }
       "demo.hint": "Büyük/küçük harf ve aksan duyarsız", "demo.count": "{n} sonuç", "demo.none": "Eşleşen dosya yok",
       "demo.badsize": "Geçersiz boyut (örnek: boyut:>10mb)",
       "shots.eyebrow": "Ekran görüntüleri", "shots.title": "Liste, kareler ve önizleme",
-      "shots.search": "\"toplanti\" yazınca iki yedekteki \"Toplantı Notları.txt\" bulunur; biri iç içe arşivde. Önizleme metni ve hangi yedekte daha yeni olduğunu gösterir.",
+      "shots.search": "\"meeting\" yazınca iki yedekteki \"Meeting Notes.txt\" bulunur; biri iç içe arşivde. Önizleme metni ve hangi yedekte daha yeni olduğunu gösterir.",
       "shots.grid": "Kareli görünüm: fotoğrafların kendisi, diğer dosyalarda Windows'taki simgeleri.",
       "shots.empty": "İlk açılış: arşivleri ya da klasörleri bırakın veya tüm diskleri taratın.",
       "feat.eyebrow": "Özellikler", "feat.title": "Everything'in dosya adlarında yaptığını, arşivlerin içinde yapar",
@@ -584,7 +585,7 @@ footer .credit strong { font-weight: 600; }
       "demo.hint": "Case and accent insensitive", "demo.count": "{n} results", "demo.none": "No matching files",
       "demo.badsize": "Invalid size (e.g. size:>10mb)",
       "shots.eyebrow": "Screenshots", "shots.title": "List, grid and preview",
-      "shots.search": "Typing \"toplanti\" finds \"Toplantı Notları.txt\" (meeting notes) in two backups, one of them in a nested archive. The preview shows the text and which backup is newer.",
+      "shots.search": "Typing \"meeting\" finds \"Meeting Notes.txt\" in two backups, one of them inside a nested archive. The preview shows the text and which backup is newer.",
       "shots.grid": "Grid view: real photo thumbnails, Windows icons for everything else.",
       "shots.empty": "First start: drop archives or folders, or scan all disks.",
       "feat.eyebrow": "Features", "feat.title": "What Everything does for file names, done inside your archives",
@@ -599,7 +600,7 @@ footer .credit strong { font-weight: 600; }
       "feat.open.t": "Open, extract, drag", "feat.open.d": "Double-click extracts and opens just that file. Extract a selection to a folder or drag it into Explorer.",
       "feat.view.t": "Icons and sorting", "feat.view.d": "Every file shows its Windows icon, and the grid shows the photos themselves. Click a column header to sort by name, size or date.",
       "feat.safe.t": "Safe and private", "feat.safe.d": "Files extracted from downloaded archives keep the Mark of the Web, and types such as .exe or .js ask before opening. The app never connects to the internet.",
-      "feat.portable.t": "Portable, 4 languages", "feat.portable.d": "One exe, no installation or .NET needed; it travels on a USB stick with its settings. Türkçe, English, Deutsch, Español. x64 and ARM64.",
+      "feat.portable.t": "Portable, 4 languages", "feat.portable.d": "One exe, no installation or .NET needed; it travels on a USB stick with its settings. English by default, plus Türkçe, Deutsch and Español. x64 and ARM64.",
       "syn.eyebrow": "Search syntax", "syn.title": "Words are enough; filters when you need them",
       "syn.lede": "Case and accents never matter. In the app, the ? button next to the search box shows the same list.",
       "syn.q": "Query", "syn.m": "What it finds",
@@ -652,7 +653,7 @@ footer .credit strong { font-weight: 600; }
       "demo.hint": "Ignoriert Groß-/Kleinschreibung und Akzente", "demo.count": "{n} Treffer", "demo.none": "Keine passenden Dateien",
       "demo.badsize": "Ungültige Größe (z. B. size:>10mb)",
       "shots.eyebrow": "Bildschirmfotos", "shots.title": "Liste, Kacheln und Vorschau",
-      "shots.search": "„toplanti“ findet „Toplantı Notları.txt“ (Besprechungsnotizen) in zwei Backups, eines davon in einem verschachtelten Archiv. Die Vorschau zeigt den Text und welches Backup neuer ist.",
+      "shots.search": "„meeting“ findet „Meeting Notes.txt“ in zwei Backups, eines davon in einem verschachtelten Archiv. Die Vorschau zeigt den Text und welches Backup neuer ist.",
       "shots.grid": "Kachelansicht: echte Foto-Vorschaubilder, Windows-Symbole für alles andere.",
       "shots.empty": "Erster Start: Archive oder Ordner ziehen oder alle Laufwerke durchsuchen.",
       "feat.eyebrow": "Funktionen", "feat.title": "Was Everything für Dateinamen tut, innerhalb Ihrer Archive",
@@ -720,7 +721,7 @@ footer .credit strong { font-weight: 600; }
       "demo.hint": "Ignora mayúsculas y acentos", "demo.count": "{n} resultados", "demo.none": "Ningún archivo coincide",
       "demo.badsize": "Tamaño no válido (p. ej. size:>10mb)",
       "shots.eyebrow": "Capturas", "shots.title": "Lista, cuadrícula y vista previa",
-      "shots.search": "Escribir \"toplanti\" encuentra \"Toplantı Notları.txt\" (notas de reunión) en dos copias de seguridad, una dentro de un archivo anidado. La vista previa muestra el texto y cuál es la más reciente.",
+      "shots.search": "Escribir \"meeting\" encuentra \"Meeting Notes.txt\" en dos copias de seguridad, una dentro de un archivo anidado. La vista previa muestra el texto y cuál es la más reciente.",
       "shots.grid": "Vista de cuadrícula: miniaturas reales de fotos e iconos de Windows para lo demás.",
       "shots.empty": "Primer inicio: arrastra archivos o carpetas, o analiza todos los discos.",
       "feat.eyebrow": "Funciones", "feat.title": "Lo que Everything hace con los nombres de archivo, dentro de tus archivos comprimidos",
@@ -778,14 +779,13 @@ footer .credit strong { font-weight: 600; }
     }
   };
 
-  // ---- Dil ----
-  const LANGS = ["tr", "en", "de", "es"];
-  let lang = "en";
+  // ---- Language ----
+  // English is the default; the language buttons and #tr / #de / #es links switch it, and the choice is remembered.
+  const LANGS = ["en", "tr", "de", "es"];
   const fromHash = location.hash.slice(1);
   let stored = null;
   try { stored = localStorage.getItem("arsivara-lang"); } catch (e) {}
-  const nav = (navigator.language || "en").slice(0, 2).toLowerCase();
-  lang = LANGS.includes(fromHash) ? fromHash : LANGS.includes(stored) ? stored : LANGS.includes(nav) ? nav : "en";
+  let lang = LANGS.includes(fromHash) ? fromHash : LANGS.includes(stored) ? stored : "en";
 
   function t(key) { return (T[lang] && T[lang][key]) ?? T.en[key] ?? key; }
 
@@ -800,8 +800,8 @@ footer .credit strong { font-weight: 600; }
   }
   document.querySelectorAll(".langs button").forEach(b => b.addEventListener("click", () => applyLang(b.dataset.lang)));
 
-  // ---- Canlı demo: programdaki eşleştirmenin sadeleştirilmiş kopyası ----
-  // Her karakter tek karaktere katlanır (uzunluk korunur), böylece vurgu aralıkları orijinal metne denk gelir.
+  // ---- Live demo: a simplified copy of the app's matching ----
+  // Every character folds to exactly one character (the length is kept), so highlight ranges line up with the original text.
   function foldChar(c) {
     let d = c.normalize("NFD")[0] || c;
     d = d.toLowerCase()[0] || d;
@@ -811,26 +811,26 @@ footer .credit strong { font-weight: 600; }
   }
   const fold = s => Array.from(s, foldChar).join("");
 
-  const A = { y: "Yedek_2025-12.rar", p: "Proje_Arsivi.zip", m: "Muhasebe_2024.7z", g: "Gezi_Fotograflari.zip" };
+  const A = { b: "Backup_2025-12.rar", p: "Project_Archive.zip", f: "Finance_2024.7z", t: "Trip_Photos.zip" };
   const FILES = [
-    ["Belgeler/Şirket Raporu 2023.pdf", 1.2e6, A.y], ["Belgeler/Şirket Sözleşmesi.docx", 84e3, A.y],
-    ["Belgeler/Personel Listesi.xlsx", 46e3, A.y], ["Masaüstü/Toplantı Notları.txt", 3e3, A.y],
-    ["Masaüstü/Kurulum Kılavuzu.pdf", 2.4e6, A.y], ["İndirilenler/Fiyat Listesi 2025.xlsx", 210e3, A.y],
-    ["İndirilenler/Teklif_ACME_2025.pdf", 640e3, A.y], ["Masaüstü/Ekran Görüntüsü 2025-11-03.png", 380e3, A.y],
-    ["Proje/Çizimler/Montaj.dwg", 5.8e6, A.p], ["Proje/Çizimler/Parça-01.step", 3.1e6, A.p],
-    ["Proje/Çizimler/Parça-02.step", 2.9e6, A.p], ["Proje/Kaynak/Program.cs", 12e3, A.p],
-    ["Proje/Kaynak/Ayarlar.json", 2e3, A.p], ["Proje/Belgeler/Kullanım Kılavuzu.docx", 1.1e6, A.p],
-    ["Proje/Belgeler/Test Raporu.pdf", 920e3, A.p], ["Proje/Sunum/Müşteri Sunumu.pptx", 7.4e6, A.p],
-    ["Faturalar/2024/Ocak/fatura_00123.pdf", 96e3, A.m], ["Faturalar/2024/Şubat/fatura_00157.pdf", 101e3, A.m],
-    ["Faturalar/2024/Mart/fatura_00201.pdf", 88e3, A.m], ["Faturalar/2023/Aralık/fatura_00987.pdf", 92e3, A.m],
-    ["Bordrolar/2024-06 Bordro.xlsx", 64e3, A.m], ["Bordrolar/2024-07 Bordro.xlsx", 66e3, A.m],
-    ["Banka/Hesap Özeti Ağustos 2024.pdf", 140e3, A.m], ["Banka/Hesap Özeti Eylül 2024.pdf", 152e3, A.m],
-    ["İSTANBUL/Galata Kulesi.jpg", 4.2e6, A.g], ["İSTANBUL/Kız Kulesi gün batımı.jpg", 3.8e6, A.g],
-    ["İSTANBUL/Boğaz turu.mp4", 186e6, A.g], ["Kapadokya/Balonlar.jpg", 5.1e6, A.g],
-    ["Kapadokya/Göreme vadisi.jpg", 4.6e6, A.g], ["Kapadokya/Uçhisar.png", 2.2e6, A.g],
-    ["Ege/Çeşme sahil.jpg", 3.3e6, A.g], ["Ege/Şirince köyü.jpg", 3.9e6, A.g],
-    ["Ege/Efes Antik Kenti.heic", 2.7e6, A.g], ["Notlar/okubeni.txt", 1e3, A.p],
-    ["Yedekler/eski_proje.zip", 48e6, A.p], ["Masaüstü/Kısayollar/", 0, A.y]
+    ["Documents/Company Report 2023.pdf", 1.2e6, A.b], ["Documents/Şirket Sözleşmesi.docx", 84e3, A.b],
+    ["Documents/Staff List.xlsx", 46e3, A.b], ["Desktop/Meeting Notes.txt", 3e3, A.b],
+    ["Desktop/Installation Guide.pdf", 2.4e6, A.b], ["Downloads/Price List 2025.xlsx", 210e3, A.b],
+    ["Downloads/Quote_ACME_2025.pdf", 640e3, A.b], ["Desktop/Screenshot 2025-11-03.png", 380e3, A.b],
+    ["Project/Drawings/Assembly.dwg", 5.8e6, A.p], ["Project/Drawings/Part-01.step", 3.1e6, A.p],
+    ["Project/Drawings/Part-02.step", 2.9e6, A.p], ["Project/Source/Program.cs", 12e3, A.p],
+    ["Project/Source/Settings.json", 2e3, A.p], ["Project/Docs/User Manual.docx", 1.1e6, A.p],
+    ["Project/Docs/Test Report.pdf", 920e3, A.p], ["Project/Slides/Customer Presentation.pptx", 7.4e6, A.p],
+    ["Invoices/2024/January/invoice_00123.pdf", 96e3, A.f], ["Invoices/2024/February/invoice_00157.pdf", 101e3, A.f],
+    ["Invoices/2024/March/invoice_00201.pdf", 88e3, A.f], ["Invoices/2023/December/invoice_00987.pdf", 92e3, A.f],
+    ["Payroll/2024-06 Payroll.xlsx", 64e3, A.f], ["Payroll/2024-07 Payroll.xlsx", 66e3, A.f],
+    ["Bank/Bank Statement August 2024.pdf", 140e3, A.f], ["Bank/Bank Statement September 2024.pdf", 152e3, A.f],
+    ["İSTANBUL/Galata Tower.jpg", 4.2e6, A.t], ["İSTANBUL/Maiden's Tower at sunset.jpg", 3.8e6, A.t],
+    ["İSTANBUL/Bosphorus tour.mp4", 186e6, A.t], ["Cappadocia/Balloons.jpg", 5.1e6, A.t],
+    ["Cappadocia/Göreme valley.jpg", 4.6e6, A.t], ["Cappadocia/Uçhisar.png", 2.2e6, A.t],
+    ["Aegean/Çeşme beach.jpg", 3.3e6, A.t], ["Aegean/Şirince village.jpg", 3.9e6, A.t],
+    ["Aegean/Ephesus.heic", 2.7e6, A.t], ["Notes/readme.txt", 1e3, A.p],
+    ["Backups/old_project.zip", 48e6, A.p], ["Desktop/Shortcuts/", 0, A.b]
   ].map(([path, size, arc]) => {
     const dir = path.endsWith("/");
     const name = path.replace(/\/$/, "").split("/").pop();
@@ -844,7 +844,7 @@ footer .credit strong { font-weight: 600; }
   const rows = document.getElementById("demo-rows");
   const count = document.getElementById("demo-count");
 
-  // Boşluklarla ayırır; tırnak içindeki boşluklar ayırmaz.
+  // Splits on whitespace; spaces inside quotes do not split.
   function tokenize(q) {
     const out = []; let cur = "", inQuote = false;
     for (const c of q) {
@@ -878,7 +878,7 @@ footer .credit strong { font-weight: 600; }
     return f => !f.dir && (op === ">" ? f.size > n : op === "<" ? f.size < n : op === "<=" ? f.size <= n : f.size >= n);
   }
 
-  // Tek koşul: !olumsuz, anahtar:değer, "tam ifade", joker ya da kelime. Vurgulanacak kelimeler marks'a eklenir.
+  // One term: !negation, key:value, "exact phrase", wildcard or word. Words to highlight are added to marks.
   function parseUnit(raw, marks) {
     let negate = false;
     while (raw.startsWith("!")) { negate = !negate; raw = raw.slice(1); }
@@ -914,7 +914,7 @@ footer .credit strong { font-weight: 600; }
     return negate ? f => !test(f) : test;
   }
 
-  // Kelimeler VE ile, a|b VEYA ile birleşir ("a | b" de olur).
+  // Words combine with AND, a|b with OR ("a | b" works too).
   function parse(q) {
     const groups = [], marks = []; let error = false, joinNext = false;
     for (const token of tokenize(q)) {
@@ -961,7 +961,7 @@ footer .credit strong { font-weight: 600; }
   input.addEventListener("input", render);
   document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => { stopTyping(); input.value = b.dataset.q; render(); input.focus(); }));
 
-  // Açılışta bir kez kendi kendine "sirket" yazar (hareket azaltma tercihinde direkt sonuç).
+  // Types "report" once on load (with reduced motion, the result is shown directly).
   let typing = null;
   function stopTyping() { if (typing) { clearInterval(typing); typing = null; } }
   input.addEventListener("focus", stopTyping);
@@ -974,7 +974,7 @@ footer .credit strong { font-weight: 600; }
     }, 140);
   }
 
-  // ---- Kurulum sekmeleri ve kopyalama ----
+  // ---- Install tabs and copy buttons ----
   const tabs = document.querySelectorAll('[role="tab"]');
   tabs.forEach(tab => tab.addEventListener("click", () => {
     tabs.forEach(o => {
@@ -994,7 +994,7 @@ footer .credit strong { font-weight: 600; }
   }));
 
   applyLang(lang);
-  setTimeout(() => autoType("sirket"), 700);
+  setTimeout(() => autoType("report"), 700);
 })();
 </script>
 </body>

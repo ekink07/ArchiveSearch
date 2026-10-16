@@ -4,32 +4,32 @@ using System.Text;
 
 namespace ArsivAra.Core;
 
-/// <param name="Hits">Eşleşen girdiler (dizindeki sırayla).</param>
-/// <param name="Error">Sorguda geçersiz bir değer varsa türü; <paramref name="ErrorDetail"/> kullanıcının yazdığı.</param>
-/// <param name="ContentTerms">icerik: terimleri (katlanmış): dosyaların içine bakılarak sonradan uygulanır (<see cref="ContentSearch"/>).</param>
+/// <param name="Hits">Matching entries (in index order).</param>
+/// <param name="Error">The kind of invalid value in the query, if any; <paramref name="ErrorDetail"/> is what the user typed.</param>
+/// <param name="ContentTerms">icerik: terms (folded): applied afterwards by looking inside the files (<see cref="ContentSearch"/>).</param>
 public sealed record SearchResult(int[] Hits, TimeSpan Elapsed, QueryErrorKind Error = QueryErrorKind.None,
     string? ErrorDetail = null, string[]? ContentTerms = null);
 
 public enum SortKey { None, Name, Folder, Size, Date, Archive, Type }
 
 /// <summary>
-/// Değişmez (immutable) arama anlık görüntüsü.
-/// Tüm arşiv içi yollar katlanmış hâlde tek bir UTF-8 tampona '\n' ile ayrılarak yazılır;
-/// arama bu tamponda vektörize IndexOf ile paralel taranır (Everything'in RAM'de tarama mantığı).
-/// Diskteki her arşivin girdilerinden hemen sonra onun iç içe arşivlerinin girdileri gelir, böylece bir arşivle
-/// sınırlı arama tamponun tek bir aralığını tarar. Sorgu dili: <see cref="QueryParser"/>.
+/// Immutable search snapshot.
+/// All in-archive paths are written, folded, into a single UTF-8 buffer separated by '\n';
+/// the search scans this buffer in parallel with vectorized IndexOf (Everything's in-RAM scanning approach).
+/// Each on-disk archive's entries are immediately followed by the entries of its nested archives, so a search
+/// limited to one archive scans a single range of the buffer. Query language: <see cref="QueryParser"/>.
 /// </summary>
 public sealed class SearchIndex
 {
-    /// <summary>Diskteki (en dıştaki) arşivler, kenar çubuğundaki sırayla.</summary>
+    /// <summary>On-disk (outermost) archives, in sidebar order.</summary>
     public IReadOnlyList<ArchiveRecord> TopLevel { get; }
 
-    /// <summary>Tampondaki sırayla tüm arşivler: her diskteki arşivden hemen sonra onun iç içe arşivleri.</summary>
+    /// <summary>All archives in buffer order: each on-disk archive is immediately followed by its nested archives.</summary>
     public IReadOnlyList<ArchiveRecord> Archives { get; }
 
     readonly string[] _foldedArchivePaths;
     readonly byte[] _text;
-    readonly int[] _offsets;   // girdi i'nin tampondaki başlangıcı; _offsets[Count] = son
+    readonly int[] _offsets;   // start of entry i in the buffer; _offsets[Count] = end
     readonly int[] _archiveOf;
     readonly int[] _entryOf;
     readonly (int Start, int End)[] _topSpans;
@@ -108,9 +108,9 @@ public sealed class SearchIndex
         return new SearchIndex(topLevel, flat, spans, foldedArchives, text, offsets, archiveOf, entryOf);
     }
 
-    // ---- Girdilere erişim ----
+    // ---- Entry access ----
 
-    /// <summary>Sonucun ait olduğu arşivin <see cref="Archives"/> içindeki sırası.</summary>
+    /// <summary>Position in <see cref="Archives"/> of the archive the result belongs to.</summary>
     public int ArchiveIndexOf(int hit) => _archiveOf[hit];
 
     public (ArchiveRecord Archive, ArchiveEntry Entry) Get(int hit)
@@ -124,7 +124,7 @@ public sealed class SearchIndex
     internal long SizeAt(int e) => EntryAt(e).Size;
     internal long MtimeAt(int e) => EntryAt(e).MtimeUtcTicks;
 
-    /// <summary>Diskteki arşivin (ve iç içe arşivlerinin) girdi aralığı; arşiv bu dizinde yoksa boş aralık.</summary>
+    /// <summary>Entry range of an on-disk archive (and its nested archives); an empty range if the archive is not in this index.</summary>
     public (int Start, int End) ScopeOf(string topLevelPath)
     {
         for (int i = 0; i < TopLevel.Count; i++)
@@ -134,7 +134,7 @@ public sealed class SearchIndex
 
     ReadOnlySpan<byte> Slice(int e) => _text.AsSpan(_offsets[e], _offsets[e + 1] - _offsets[e] - 1);
 
-    /// <summary>Katlanmış yolun ad kısmı (klasörde sondaki '/' hariç).</summary>
+    /// <summary>Name part of a folded path (without the trailing '/' of a folder).</summary>
     internal static ReadOnlySpan<byte> NameOf(ReadOnlySpan<byte> path)
     {
         if (path.Length > 0 && path[^1] == '/') path = path[..^1];
@@ -149,7 +149,7 @@ public sealed class SearchIndex
         return i < 0 ? [] : path[..i];
     }
 
-    /// <summary>Tür: klasörler en başta (boş), sonra uzantıya göre.</summary>
+    /// <summary>Type: folders first (empty), then by extension.</summary>
     ReadOnlySpan<byte> TypeOf(int e)
     {
         if (IsDirectoryAt(e)) return [];
@@ -158,9 +158,9 @@ public sealed class SearchIndex
         return dot <= 0 ? "\u0001"u8 : name[dot..];
     }
 
-    // ---- Arama ----
+    // ---- Search ----
 
-    /// <param name="scope">Sadece bu girdi aralığında ara (kenar çubuğunda seçili arşiv: <see cref="ScopeOf"/>).</param>
+    /// <param name="scope">Search only within this entry range (the archive selected in the sidebar: <see cref="ScopeOf"/>).</param>
     public SearchResult Search(string query, CancellationToken ct = default, (int Start, int End)? scope = null)
     {
         var sw = Stopwatch.StartNew();
@@ -202,7 +202,7 @@ public sealed class SearchIndex
                     if (i < 0) break;
                     int e = EntryAtByte(pos + i);
                     if (root.Match(new EntryView(this, e, Slice(e)))) res.Add(e);
-                    pos = _offsets[e + 1]; // aynı girdide tekrar aramaya gerek yok
+                    pos = _offsets[e + 1]; // no need to search the same entry again
                     if (ct.IsCancellationRequested) break;
                 }
             }
@@ -226,7 +226,7 @@ public sealed class SearchIndex
         return i >= 0 ? i : ~i - 1;
     }
 
-    /// <summary>Joker eşleştirme (UTF-8): '*' herhangi bir dizi, '?' tek bir karakter (kod noktası); metnin tamamına uymalı.</summary>
+    /// <summary>Wildcard matching (UTF-8): '*' is any sequence, '?' a single character (code point); must match the whole text.</summary>
     internal static bool GlobMatch(ReadOnlySpan<byte> s, ReadOnlySpan<byte> p)
     {
         int si = 0, pi = 0, starP = -1, starS = 0;
@@ -261,9 +261,9 @@ public sealed class SearchIndex
 
     static int CodePointLength(byte b) => b < 0xC0 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
 
-    // ---- Sıralama ----
+    // ---- Sorting ----
 
-    /// <summary>Sonuçları sıralar. Ad/klasör/tür sıraları dizin başına bir kez hesaplanır, sonraki sıralamalar tamsayı karşılaştırmasıdır.</summary>
+    /// <summary>Sorts the results. Name/folder/type ranks are computed once per index; later sorts are integer comparisons.</summary>
     public int[] Sort(int[] hits, SortKey key, bool descending)
     {
         var result = (int[])hits.Clone();
@@ -274,13 +274,13 @@ public sealed class SearchIndex
             case SortKey.Name: SortBy(result, h => _nameRank.Value[h]); break;
             case SortKey.Folder: SortBy(result, h => _folderRank.Value[h]); break;
             case SortKey.Type: SortBy(result, h => _typeRank.Value[h]); break;
-            default: Array.Sort(result); break; // dizin sırası = arşiv adına göre, arşivin içinde kendi sırası
+            default: Array.Sort(result); break; // index order = by archive name, and within an archive its own order
         }
         if (descending) Array.Reverse(result);
         return result;
     }
 
-    /// <summary>Anahtara göre sıralar; eşit anahtarlarda dizin sırası korunur (kararlı ve tekrarlanabilir).</summary>
+    /// <summary>Sorts by key; index order is kept for equal keys (stable and reproducible).</summary>
     static void SortBy(int[] hits, Func<int, long> keyOf)
     {
         var keys = new long[hits.Length];
@@ -298,8 +298,8 @@ public sealed class SearchIndex
     delegate ReadOnlySpan<byte> KeyOf(int entry);
 
     /// <summary>
-    /// Her girdinin anahtara göre sırası. Önce ilk 8 bayta göre (tamsayı olarak, hızlı) sıralanır,
-    /// sonra aynı ön eki paylaşan gruplar tam karşılaştırmayla; eşitlikte <paramref name="tieBreak"/>, o da eşitse dizin sırası.
+    /// Rank of each entry by key. Entries are first sorted by their first 8 bytes (as an integer, fast),
+    /// then groups sharing the same prefix by full comparison; ties go to <paramref name="tieBreak"/>, and if that is equal too, to index order.
     /// </summary>
     int[] ComputeRank(KeyOf keyOf, int[]? tieBreak)
     {
@@ -338,9 +338,9 @@ public sealed class SearchIndex
         return rank;
     }
 
-    // ---- Kopyalar ve sürümler ----
+    // ---- Duplicates and versions ----
 
-    /// <summary>Girdinin bir kopyası var mı: aynı ad ve boyut, CRC'ler biliniyorsa aynı CRC (bilinmeyen CRC her şeyle eşleşir).</summary>
+    /// <summary>Whether the entry has a duplicate: same name and size, and the same CRC if the CRCs are known (an unknown CRC matches anything).</summary>
     public bool IsDuplicate(int entry) => _duplicates.Value[entry];
 
     bool[] ComputeDuplicates()
@@ -386,7 +386,7 @@ public sealed class SearchIndex
     }
 
     /// <summary>
-    /// Aynı adlı (büyük/küçük harf ve aksan duyarsız) tüm dosyalar, en yeniden eskiye: "bu dosyanın en yeni sürümü hangi yedekte".
+    /// All files with the same name (case- and accent-insensitive), newest to oldest: "which backup has the newest version of this file".
     /// </summary>
     public int[] SameName(int hit)
     {

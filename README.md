@@ -10,14 +10,14 @@ Drop your archives in (or let it find all of them), type a few letters, and see 
 
 **English** · [Türkçe](README.tr.md) · [Deutsch](README.de.md) · [Español](README.es.md)
 
-[![Release](https://img.shields.io/github/v/release/YOUR_GITHUB_USER/ArsivAra?color=F7861F&label=release)](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/YOUR_GITHUB_USER/ArsivAra/total?color=0F6BBF)](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases)
-[![CI](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ekink07/ArchiveSearch?color=F7861F&label=release)](https://github.com/ekink07/ArchiveSearch/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/ekink07/ArchiveSearch/total?color=0F6BBF)](https://github.com/ekink07/ArchiveSearch/releases)
+[![CI](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
 ![x64 | ARM64](https://img.shields.io/badge/x64%20%7C%20ARM64-0B1B2E)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0B1B2E)](#license)
 
-<img src="docs/images/search.png" width="860" alt="Searching 'toplanti' finds the meeting notes in two backups, one inside a nested archive; the preview pane shows the text and both versions">
+<img src="docs/images/search.png" width="860" alt="Searching 'meeting' finds the meeting notes in two backups, one inside a nested archive; the preview pane shows the text and both versions">
 
 </div>
 
@@ -42,7 +42,7 @@ the way [Everything](https://www.voidtools.com/) searches file names on your dis
 | **Extract and drag** | `Ctrl + E` extracts the selection to a folder; drag results straight into Explorer. |
 | **List, grid, sorting** | Windows icons, photo thumbnails, `Ctrl + wheel` zoom from 16 to 256 px. Click a column header to sort by name, folder, size, date or archive. |
 | **Safe** | Extracted files keep the archive's Mark of the Web, and programs or scripts (`.exe`, `.js`, `.ps1`…) ask before opening. Fully offline. |
-| **Portable, 4 languages** | One exe for x64 or ARM64, no installation or .NET required. Türkçe, English, Deutsch, Español. |
+| **Portable, 4 languages** | One exe for x64 or ARM64, no installation or .NET required. English by default; Türkçe, Deutsch and Español in *Settings*. |
 
 ## Install
 
@@ -50,13 +50,13 @@ the way [Everything](https://www.voidtools.com/) searches file names on your dis
 and adds it to the Start menu and to *Settings › Apps* (uninstall from there). No admin rights needed.
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1 | iex
 ```
 
 With options (`-Desktop` for a desktop shortcut, `-Uninstall`, `-Uninstall -RemoveData` to also delete settings and the library):
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Desktop
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Desktop
 ```
 
 **winget**
@@ -65,7 +65,7 @@ With options (`-Desktop` for a desktop shortcut, `-Uninstall`, `-Uninstall -Remo
 winget install VerloraStudios.ArsivAra
 ```
 
-**Manual**: download `ArsivAra.exe` (x64) or `ArsivAra-arm64.exe` from the [latest release](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest) and run it.
+**Manual**: download `ArsivAra.exe` (x64) or `ArsivAra-arm64.exe` from the [latest release](https://github.com/ekink07/ArchiveSearch/releases/latest) and run it.
 
 **Portable**: put an empty `portable.txt` next to the exe (or run it from a USB drive) and settings and the library are kept
 in an `ArsivAra-veri` folder beside it. Otherwise they live in `%LOCALAPPDATA%\ArsivAra`.
@@ -128,7 +128,7 @@ Click an archive in the sidebar to search only inside it; with an empty search b
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) on Windows (`winget install Microsoft.DotNet.SDK.10`); `global.json` selects it.
 
 ```powershell
-git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
+git clone https://github.com/ekink07/ArchiveSearch.git
 cd ArsivAra
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # unit tests on real sample archives
@@ -148,11 +148,11 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `src/ArsivAra.Cli` | Command-line tool: `index`, `search`, `extract`, `watch`, `lisans` |
 | `src/ThirdParty` | SharpCompress 0.50.4 source code (RAR, 7z, TAR, XZ, BZip2 and Zstandard decoders), see [its README](src/ThirdParty/README.md) |
 | `tests/` | xUnit tests with sample archives made by WinRAR, 7-Zip and IMAPI2; UI smoke test |
-| `tools/` | Icons, screenshots and social card, test archives, `set-github-user.ps1` for the `YOUR_GITHUB_USER` placeholders |
+| `tools/` | Icons, screenshots and social card, test archives, `set-github-user.ps1` to point the links to another GitHub owner or repository |
 
 Every push runs the [CI workflow](.github/workflows/ci.yml). Pushing a tag such as `v1.1.0` runs the tests, builds the x64 and ARM64 exes,
 signs them when signing secrets are set, publishes a GitHub release
-and updates winget ([workflow](.github/workflows/release.yml)). Step-by-step publishing, winget and code signing guide (Turkish): [packaging/README.md](packaging/README.md).
+and updates winget ([workflow](.github/workflows/release.yml)). Step-by-step publishing, winget and code signing guide: [packaging/README.md](packaging/README.md).
 
 ## Limitations
 

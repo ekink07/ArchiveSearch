@@ -1,11 +1,13 @@
-﻿# Belgelerdeki ekran görüntülerini üretir: docs/images/{empty,search,grid,about}.png
-#   pwsh tools/make_screenshots.ps1 [-Exe <ArsivAra.exe>]
-# Örnek arşivler geçici klasörde .NET ve Windows'un tar.exe'siyle hazırlanır; 7z, şifreli RAR ve ISO için test arşivleri kopyalanır.
-# Program geçici bir veri klasörüyle açılır, UI Automation ile yönetilir, pencere PrintWindow ile yakalanır:
-# klavye, fare ve odak kullanılmaz; üstteki pencereler ya da fare imleci görüntüye girmez.
+﻿# Produces the screenshots used by the docs: docs/images/{empty,search,grid,about}.png
+#   pwsh tools/make_screenshots.ps1 [-Exe <ArsivAra.exe>] [-Language en]
+# Sample archives are built in a temporary folder with .NET and Windows' tar.exe; for 7z, the encrypted RAR and the
+# ISO, test archives are copied. The app runs with a temporary data folder, is driven through UI Automation and the
+# window is captured with PrintWindow: no keyboard, mouse or focus is used, and windows on top or the mouse pointer
+# never end up in the image.
 param(
   [string]$Exe = (Join-Path $PSScriptRoot '..\src\ArsivAra.App\bin\Release\net10.0-windows\ArsivAra.exe'),
   [string]$Out = (Join-Path $PSScriptRoot '..\docs\images'),
+  [string]$Language = 'en',
   [int]$Width = 1180,
   [int]$Height = 720
 )
@@ -34,11 +36,11 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Exe = (Resolve-Path $Exe).Path
 $Out = (Resolve-Path $Out).Path
 $fixtures = Join-Path $root 'tests\ArsivAra.Core.Tests\Fixtures'
-$work = Join-Path ([IO.Path]::GetTempPath()) ('arsivara-ekran-' + [guid]::NewGuid().ToString('N'))
-$samples = Join-Path $work 'ornekler'
+$work = Join-Path ([IO.Path]::GetTempPath()) ('arsivara-shots-' + [guid]::NewGuid().ToString('N'))
+$samples = Join-Path $work 'samples'
 New-Item -ItemType Directory -Force $samples | Out-Null
 
-# ---------------------------------------------------------------- örnek arşivler
+# ---------------------------------------------------------------- sample archives
 
 function New-Photo([int]$n) {
   $palettes = @(@(142, 45, 226, 255, 112, 67), @(33, 150, 243, 233, 30, 99), @(46, 125, 50, 129, 199, 132),
@@ -65,7 +67,7 @@ function New-Photo([int]$n) {
 
 function Bytes($data) { if ($data -is [string]) { , [Text.Encoding]::UTF8.GetBytes($data) } else { , [byte[]]$data } }
 
-# $items: @( @('yol/ad', <metin ya da bayt>, 'yyyy-MM-dd HH:mm'), ... ); '/' ile biten yol klasördür.
+# $items: @( @('path/name', <text or bytes>, 'yyyy-MM-dd HH:mm'), ... ); a path ending in '/' is a folder.
 function New-Zip([string]$path, [object[]]$items, [Text.Encoding]$encoding = [Text.Encoding]::UTF8) {
   $fs = [IO.File]::Create($path)
   $zip = New-Object IO.Compression.ZipArchive ($fs, [IO.Compression.ZipArchiveMode]::Create, $false, $encoding)
@@ -78,82 +80,82 @@ function New-Zip([string]$path, [object[]]$items, [Text.Encoding]$encoding = [Te
 }
 
 $notes2025 = @"
-Toplantı Notları - 12 Eylül 2025
+Meeting Notes - 12 September 2025
 
-Katılımcılar: Ayşe, Mehmet, Zeynep, Can
+Attendees: Alice, Mehmet, Sofia, Lukas
 
-1. Yedekleme düzeni
-   - Haftalık yedekler pazar gecesi yedekler.zip'e eklenecek.
-   - Eski yedekler silinmeyecek; Arşiv Ara ile içlerinde aranacak.
+1. Backup routine
+   - Weekly backups are added to backups.zip on Sunday night.
+   - Old backups are kept; search inside them with Arsiv Ara.
 
-2. Bütçe 2025
-   - Tablolar/Bütçe 2025.xlsx güncellendi, ekim sonuna kadar onay bekleniyor.
+2. Budget 2025
+   - Sheets/Budget 2025.xlsx is updated; approval expected by the end of October.
 
-3. İstanbul şubesi
-   - Sözleşme yenilemesi için hukuk birimine dönüş yapılacak.
+3. Istanbul office
+   - Legal will follow up on the contract renewal.
 
-Sonraki toplantı: 26 Eylül 2025, 10:00
+Next meeting: 26 September 2025, 10:00
 "@
 $notes2023 = @"
-Toplantı Notları - 3 Kasım 2023
+Meeting Notes - 3 November 2023
 
-1. Proje yedeği alındı (2023/proje_yedegi.zip).
-2. Şirket raporu taslağı paylaşıldı.
+1. Project backup taken (2023/project_backup.zip).
+2. First draft of the company report shared.
 "@
 
-New-Zip "$samples\eski_cp857.zip" @(
-  @('eski/Belgeler/Şirket Raporu 2019.pdf', '%PDF-1.4 sirket raporu 2019', '2019-04-02 16:40'),
+# Old ZIP with DOS (CP857) Turkish file names: shows that legacy names are decoded correctly.
+New-Zip "$samples\old_dos_names.zip" @(
+  @('eski/Belgeler/Şirket Raporu 2019.pdf', '%PDF-1.4 report 2019', '2019-04-02 16:40'),
   @('eski/Fotoğraflar/İstanbul Gezisi/IMG_0001.jpg', (New-Photo 1), '2018-07-21 11:05'),
-  @('eski/Müşteri Listesi.xlsx', 'musteri listesi', '2019-02-11 09:12'),
-  @('eski/Faturalar/2019/Ocak/fatura_00123.pdf', '%PDF-1.4 fatura 00123', '2019-01-31 17:30'),
-  @('eski/ığüşöç ĞÜŞİÖÇ.txt', 'Türkçe karakter testi: ığüşöç ĞÜŞİÖÇ', '2019-05-06 10:00')
+  @('eski/Müşteri Listesi.xlsx', 'customers', '2019-02-11 09:12'),
+  @('eski/Faturalar/2019/Ocak/fatura_00123.pdf', '%PDF-1.4 invoice 00123', '2019-01-31 17:30')
 ) ([Text.Encoding]::GetEncoding(857))
 
-$gallery = foreach ($n in 1..16) { , @("Fotoğraflar/Gezi 2025/IMG_$('{0:D4}' -f $n).$(if ($n % 2) { 'jpg' } else { 'png' })", (New-Photo $n), "2025-08-$('{0:D2}' -f (2 + $n)) 1$($n % 10):2$($n % 6)") }
-$gallery += , @('Fotoğraflar/Boş klasör/', '', '2025-08-20 12:00')
-foreach ($f in @(@('Teklif_2025.docx', 'teklif'), @('Fiyat Listesi.xlsx', 'fiyat'), @('Kurulum Kılavuzu.pdf', '%PDF kilavuz'), @('Sunum.pptx', 'sunum'),
-    @('Montaj.dwg', 'dwg'), @('Parça-01.step', 'ISO-10303-21;'), @('okubeni.txt', 'okubeni'), @('tanıtım.mp4', [byte[]]::new(2048)),
-    @('Program.cs', 'Console.WriteLine("Merhaba");'))) {
-  $gallery += , @("Dosyalar/$($f[0])", $f[1], '2025-06-18 14:45')
+$gallery = foreach ($n in 1..16) { , @("Photos/Trip 2025/IMG_$('{0:D4}' -f $n).$(if ($n % 2) { 'jpg' } else { 'png' })", (New-Photo $n), "2025-08-$('{0:D2}' -f (2 + $n)) 1$($n % 10):2$($n % 6)") }
+$gallery += , @('Photos/Empty folder/', '', '2025-08-20 12:00')
+foreach ($f in @(@('Quote_2025.docx', 'quote'), @('Price List.xlsx', 'prices'), @('Installation Guide.pdf', '%PDF guide'), @('Slides.pptx', 'slides'),
+    @('Assembly.dwg', 'dwg'), @('Part-01.step', 'ISO-10303-21;'), @('readme.txt', 'readme'), @('intro.mp4', [byte[]]::new(2048)),
+    @('Program.cs', 'Console.WriteLine("Hello");'))) {
+  $gallery += , @("Files/$($f[0])", $f[1], '2025-06-18 14:45')
 }
-New-Zip "$samples\galeri.zip" $gallery
+New-Zip "$samples\photos.zip" $gallery
 
-New-Zip "$samples\utf8_turkce.zip" @(
-  @('Belgeler/Şirket Raporu 2024.pdf', '%PDF-1.4 sirket raporu 2024', '2025-02-14 18:20'),
-  @('Belgeler/Sözleşme.pdf', '%PDF-1.4 sozlesme', '2025-03-03 11:15'),
-  @('Tablolar/Bütçe 2025.xlsx', 'butce', '2025-09-10 08:55'),
-  @('Notlar/Toplantı Notları.txt', $notes2025, '2025-09-12 15:30'),
-  @('Fotoğraflar/Kapadokya.jpg', (New-Photo 5), '2025-05-01 07:10')
+New-Zip "$samples\documents.zip" @(
+  @('Documents/Company Report 2024.pdf', '%PDF-1.4 company report 2024', '2025-02-14 18:20'),
+  @('Documents/Contract.pdf', '%PDF-1.4 contract', '2025-03-03 11:15'),
+  @('Sheets/Budget 2025.xlsx', 'budget', '2025-09-10 08:55'),
+  @('Notes/Meeting Notes.txt', $notes2025, '2025-09-12 15:30'),
+  @('Photos/Cappadocia.jpg', (New-Photo 5), '2025-05-01 07:10')
 )
 
-# İç içe: yedekler.zip > 2023/proje_yedegi.zip ve 2024/kaynak.tar.gz
-$stage = Join-Path $work 'kaynak'
-New-Item -ItemType Directory -Force "$stage\kaynak" | Out-Null
-[IO.File]::WriteAllText("$stage\kaynak\main.c", "#include <stdio.h>`nint main(void) { puts(""merhaba""); return 0; }`n")
-[IO.File]::WriteAllText("$stage\kaynak\util.h", "#pragma once`nint topla(int a, int b);`n")
-[IO.File]::WriteAllText("$stage\kaynak\notlar.txt", ("derleme notlari`n" * 60))
+# Nested: backups.zip > 2023/project_backup.zip and 2024/source.tar.gz
+$stage = Join-Path $work 'source'
+New-Item -ItemType Directory -Force "$stage\source" | Out-Null
+[IO.File]::WriteAllText("$stage\source\main.c", "#include <stdio.h>`nint main(void) { puts(""hello""); return 0; }`n")
+[IO.File]::WriteAllText("$stage\source\util.h", "#pragma once`nint add(int a, int b);`n")
+[IO.File]::WriteAllText("$stage\source\notes.txt", ("build notes`n" * 60))
 Get-ChildItem $stage -Recurse | ForEach-Object { $_.LastWriteTime = [datetime]'2024-04-09 13:00' }
-$tar = Join-Path $work 'kaynak.tar.gz'
-& "$env:SystemRoot\System32\tar.exe" -czf $tar -C $stage kaynak
-if ($LASTEXITCODE) { throw 'tar.exe kaynak.tar.gz üretemedi' }
-New-Zip "$work\proje_yedegi.zip" @(
-  @('Belgeler/Şirket Raporu 2023.pdf', '%PDF-1.4 sirket raporu 2023', '2023-10-30 17:45'),
-  @('Notlar/Toplantı Notları.txt', $notes2023, '2023-11-03 10:20'),
-  @('Kaynak/Program.cs', 'Console.WriteLine("Merhaba");', '2023-09-18 21:05')
+$tar = Join-Path $work 'source.tar.gz'
+& "$env:SystemRoot\System32\tar.exe" -czf $tar -C $stage source
+if ($LASTEXITCODE) { throw 'tar.exe could not create source.tar.gz' }
+New-Zip "$work\project_backup.zip" @(
+  @('Documents/Company Report 2023.pdf', '%PDF-1.4 company report 2023', '2023-10-30 17:45'),
+  @('Notes/Meeting Notes.txt', $notes2023, '2023-11-03 10:20'),
+  @('Source/Program.cs', 'Console.WriteLine("Hello");', '2023-09-18 21:05')
 )
-New-Zip "$samples\yedekler.zip" @(
-  @('2023/proje_yedegi.zip', [IO.File]::ReadAllBytes("$work\proje_yedegi.zip"), '2023-11-03 18:00'),
-  @('2024/kaynak.tar.gz', [IO.File]::ReadAllBytes($tar), '2024-04-09 13:05'),
-  @('okubeni.txt', 'Haftalık yedekler.', '2025-09-14 23:00')
+New-Zip "$samples\backups.zip" @(
+  @('2023/project_backup.zip', [IO.File]::ReadAllBytes("$work\project_backup.zip"), '2023-11-03 18:00'),
+  @('2024/source.tar.gz', [IO.File]::ReadAllBytes($tar), '2024-04-09 13:05'),
+  @('readme.txt', 'Weekly backups.', '2025-09-14 23:00')
 )
-Copy-Item $tar "$samples\kaynak.tar.gz"
-Copy-Item "$fixtures\7z-solid.7z" "$samples\yedek.7z"
-Copy-Item "$fixtures\udf.iso" "$samples\Kurulum_Diski.iso"
-Copy-Item "$fixtures\rar5-sifreli-baslik.rar" "$samples\Muhasebe_2024.rar"
+Copy-Item $tar "$samples\source.tar.gz"
+Copy-Item "$fixtures\7z-solid.7z" "$samples\archive.7z"
+Copy-Item "$fixtures\udf.iso" "$samples\Setup_Disc.iso"
+Copy-Item "$fixtures\rar5-sifreli-baslik.rar" "$samples\Accounting_2024.rar"
 $archives = Get-ChildItem $samples -File | Sort-Object Name | ForEach-Object FullName
-Write-Host "Örnek arşivler: $($archives.Count)"
+Write-Host "Sample archives: $($archives.Count)"
 
-# ---------------------------------------------------------------- program ve yakalama
+# ---------------------------------------------------------------- app and capture
 
 $AE = [Windows.Automation.AutomationElement]
 $userWindow = [Shot]::GetForegroundWindow()
@@ -164,15 +166,15 @@ function Wait-For([scriptblock]$probe, [int]$seconds = 15) {
     try { $r = & $probe; if ($r) { return $r } } catch { }
     Start-Sleep -Milliseconds 200
   }
-  throw "Zaman aşımı: $probe"
+  throw "Timed out: $probe"
 }
-function Find($el, [string]$id) { Wait-For { $el.FindFirst([Windows.Automation.TreeScope]::Descendants, (Cond $AE::AutomationIdProperty $id)) } 10 }
-function Invoke($el, [string]$id) { (Find $el $id).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke(); Give-Back-Focus }
-function Search($el, [string]$text) { (Find $el 'SearchBox').GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($text); Give-Back-Focus }
 function Give-Back-Focus {
   [uint32]$fgPid = 0; [Shot]::GetWindowThreadProcessId([Shot]::GetForegroundWindow(), [ref]$fgPid) | Out-Null
   if ((Get-Process -Id $fgPid -ErrorAction SilentlyContinue).Path -eq $Exe) { [Shot]::SetForegroundWindow($userWindow) | Out-Null }
 }
+function Find($el, [string]$id) { Wait-For { $el.FindFirst([Windows.Automation.TreeScope]::Descendants, (Cond $AE::AutomationIdProperty $id)) } 10 }
+function Invoke($el, [string]$id) { (Find $el $id).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke(); Give-Back-Focus }
+function Search($el, [string]$text) { (Find $el 'SearchBox').GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).SetValue($text); Give-Back-Focus }
 
 function Start-App([string]$name, [string]$settingsJson, [string[]]$files) {
   $data = Join-Path $work $name
@@ -187,7 +189,7 @@ function Start-App([string]$name, [string]$settingsJson, [string[]]$files) {
   return @{ Process = $p; Handle = $h; Root = $AE::FromHandle($h) }
 }
 
-# Görünür çerçeve tam Width x Height olsun; pencere en alta (HWND_BOTTOM), etkinleştirmeden.
+# The visible frame is exactly Width x Height; the window goes to the bottom of the z-order (HWND_BOTTOM) without activation.
 function Resize([IntPtr]$h) {
   $o = [Shot]::Outer($h); $f = [Shot]::Frame($h)
   $cx = $Width + (($o.R - $o.L) - ($f.R - $f.L)); $cy = $Height + (($o.B - $o.T) - ($f.B - $f.T))
@@ -195,8 +197,8 @@ function Resize([IntPtr]$h) {
 }
 
 function Save-Window([IntPtr]$h, [string]$name) {
-  Start-Sleep -Milliseconds 900 # geçişler ve küçük resimler otursun
-  Give-Back-Focus # pencere kendiliğinden öne geldiyse odak kullanıcıya döner (başlık çubuğu da her görüntüde aynı görünür)
+  Start-Sleep -Milliseconds 900 # let transitions and thumbnails settle
+  Give-Back-Focus # if the window came to the front by itself, focus goes back to the user (and every image has the same title bar)
   $o = [Shot]::Outer($h); $f = [Shot]::Frame($h)
   $full = New-Object Drawing.Bitmap ($o.R - $o.L), ($o.B - $o.T)
   $g = [Drawing.Graphics]::FromImage($full); $dc = $g.GetHdc()
@@ -216,34 +218,34 @@ function Close-App($app) {
 
 $apps = @()
 try {
-  # 1) İlk açılış
-  $app = Start-App 'bos' '{ "Language": "tr", "ShowPreview": false }' @(); $apps += $app
+  # 1) First start
+  $app = Start-App 'empty' "{ ""Language"": ""$Language"", ""ShowPreview"": false }" @(); $apps += $app
   Find $app.Root 'EmptyScanDisks' | Out-Null
   Save-Window $app.Handle 'empty'
   Close-App $app
 
-  # 2) Arama + önizleme, kareler, Hakkında
-  $app = Start-App 'dolu' '{ "Language": "tr", "ShowPreview": false, "IconSize": 16 }' $archives; $apps += $app
+  # 2) Search + preview, grid, About
+  $app = Start-App 'library' "{ ""Language"": ""$Language"", ""ShowPreview"": false, ""IconSize"": 16 }" $archives; $apps += $app
   $root = $app.Root
-  Wait-For { (Find $root 'LibraryStatus').Current.Name -match "^$($archives.Count) arşiv" } 60 | Out-Null
+  Wait-For { (Find $root 'LibraryStatus').Current.Name -match "^$($archives.Count) " } 60 | Out-Null
 
   Invoke $root 'PreviewButton'
-  Search $root 'toplanti'
+  Search $root 'meeting'
   $first = Wait-For { (Find $root 'Results').FindFirst([Windows.Automation.TreeScope]::Children, (Cond $AE::ControlTypeProperty ([Windows.Automation.ControlType]::ListItem))) } 10
   $first.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
-  Wait-For { (Find $root 'PreviewText').GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value -like 'Toplantı*' } 10 | Out-Null
+  Wait-For { (Find $root 'PreviewText').GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern).Current.Value -like 'Meeting*' } 10 | Out-Null
   Save-Window $app.Handle 'search'
 
   Invoke $root 'PreviewButton'
   Search $root 'ext:jpg;png'
   Invoke $root 'GridViewButton'
   Wait-For { -not (Find $root 'ResultsGrid').Current.IsOffscreen } 10 | Out-Null
-  Start-Sleep -Seconds 2 # küçük resimler arka planda çözülür
+  Start-Sleep -Seconds 2 # thumbnails are decoded in the background
   Save-Window $app.Handle 'grid'
   Invoke $root 'ListViewButton'
 
   Invoke $root 'CreditLink'
-  # Sahipli iletişim kutusu UIA ağacında ana pencerenin çocuğudur.
+  # Owned dialogs are children of the main window in the UIA tree.
   $about = Wait-For { $root.FindFirst([Windows.Automation.TreeScope]::Children, (Cond $AE::ControlTypeProperty ([Windows.Automation.ControlType]::Window))) } 10
   Give-Back-Focus
   Save-Window ([IntPtr]$about.Current.NativeWindowHandle) 'about'

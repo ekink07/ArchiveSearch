@@ -10,12 +10,12 @@
         PreviewDragLeave="Window_DragLeave" PreviewDrop="Window_Drop"
         PreviewMouseWheel="Window_PreviewMouseWheel" PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
-        <!-- Kareli görünümde üzerine gelme / seçili kare -->
+        <!-- Grid view: hovered / selected tile -->
         <SolidColorBrush x:Key="TileHover" Color="#1F808080" />
         <SolidColorBrush x:Key="TileSelected" Color="#40FFB300" />
         <SolidColorBrush x:Key="TileSelectedBorder" Color="#CCFFB300" />
 
-        <!-- Sadece simgeden oluşan düğmeler (ekran okuyucu adı AutomationProperties.Name ile verilir) -->
+        <!-- Icon-only buttons (the screen reader name is given via AutomationProperties.Name) -->
         <Style x:Key="IconGlyph" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
             <Setter Property="FontSize" Value="16" />
@@ -23,7 +23,7 @@
             <Setter Property="HorizontalAlignment" Value="Center" />
         </Style>
 
-        <!-- Sıralanabilir sütun başlığı -->
+        <!-- Sortable column header -->
         <Style x:Key="HeaderButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -83,7 +83,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Üst çubuk: logo, arama, görünüm düğmeleri, ekle -->
+        <!-- Top bar: logo, search, view buttons, add -->
         <Grid Grid.Row="0" Margin="16,12,16,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -172,7 +172,7 @@
                 <ColumnDefinition x:Name="PreviewColumn" Width="0" />
             </Grid.ColumnDefinitions>
 
-            <!-- Sol: arşivler ve kayıtlı aramalar -->
+            <!-- Left: archives and saved searches -->
             <Grid x:Name="Sidebar" Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -261,7 +261,7 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Orta: sonuçlar (Windows 11 teması GridView desteklemediği için sütunlar şablonla çiziliyor) -->
+            <!-- Center: results (the Windows 11 theme does not support GridView, so the columns are drawn with a template) -->
             <DockPanel x:Name="ResultsPanel" Grid.Column="2">
                 <Grid x:Name="ListHeader" DockPanel.Dock="Top" Margin="8,2,22,4" Opacity="0.85">
                     <Grid.ColumnDefinitions>
@@ -298,7 +298,7 @@
                              PreviewMouseLeftButtonDown="Results_PreviewMouseLeftButtonDown"
                              PreviewMouseLeftButtonUp="Results_PreviewMouseLeftButtonUp"
                              PreviewMouseMove="Results_PreviewMouseMove">
-                        <!-- Tema satırlara geniş boşluk veriyor; Everything gibi sık liste için daraltılıyor -->
+                        <!-- The theme pads rows generously; tightened here for a dense, Everything-style list -->
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                                 <Setter Property="MinHeight" Value="0" />
@@ -331,7 +331,7 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Kareli görünüm: her öğe bir satır dolusu kare; sadece görünen satırlar oluşturulur -->
+                    <!-- Grid view: each item is a row of tiles; only visible rows are created -->
                     <ItemsControl x:Name="ResultsGrid" Visibility="Collapsed" Focusable="True"
                                   VirtualizingPanel.IsVirtualizing="True"
                                   VirtualizingPanel.VirtualizationMode="Recycling"
@@ -396,12 +396,12 @@
                 </Grid>
             </DockPanel>
 
-            <!-- Sağ: önizleme (Alt+P) -->
+            <!-- Right: preview (Alt+P) -->
             <GridSplitter x:Name="PreviewSplitter" Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="Transparent"
                           ResizeBehavior="PreviousAndNext" Visibility="Collapsed" DragCompleted="PreviewSplitter_DragCompleted" />
             <l:PreviewPane x:Name="Preview" Grid.Column="4" Visibility="Collapsed" Margin="4,0,0,4" />
 
-            <!-- Boş durum: hiç arşiv yokken bırakma alanı -->
+            <!-- Empty state: drop area shown when there are no archives -->
             <Border x:Name="EmptyState" Grid.Column="0" Grid.ColumnSpan="5" CornerRadius="12"
                     BorderThickness="2" BorderBrush="#808080" Background="Transparent" Margin="0,0,0,4">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="480">
@@ -429,7 +429,7 @@
             </Border>
         </Grid>
 
-        <!-- Alt durum satırı -->
+        <!-- Bottom status bar -->
         <Grid Grid.Row="2" Margin="18,8,18,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -437,7 +437,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <!-- Arşiv eklenirken ya da disk taranırken görünen ilerleme çubuğu -->
+            <!-- Progress bar shown while archives are being added or disks scanned -->
             <StackPanel x:Name="AddProgressPanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,12,0" VerticalAlignment="Center">
                 <ProgressBar x:Name="AddProgressBar" Width="200" Height="6" Minimum="0" Maximum="1" VerticalAlignment="Center" />
                 <TextBlock x:Name="AddProgressText" Margin="10,0,0,0" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -446,7 +446,7 @@
                        AutomationProperties.AutomationId="LibraryStatus" />
             <TextBlock x:Name="ResultStatus" Grid.Column="2" Margin="16,0,0,0" Opacity="0.7" VerticalAlignment="Center"
                        AutomationProperties.AutomationId="ResultStatus" />
-            <!-- Yapımcı imzası: tıklayınca (ya da F1) Hakkında penceresi açılır; klavyeyle de seçilebilir -->
+            <!-- Author credit: clicking it (or F1) opens the About window; it can also be reached with the keyboard -->
             <TextBlock Grid.Column="3" Margin="20,0,0,0" FontSize="12" Opacity="0.6" VerticalAlignment="Center">
                 <Hyperlink x:Name="CreditLink" Click="About_Click" TextDecorations="{x:Null}"
                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -457,7 +457,7 @@
             </TextBlock>
         </Grid>
 
-        <!-- Sürüklerken tüm pencereyi kaplayan katman -->
+        <!-- Overlay covering the whole window during a drag -->
         <Border x:Name="DropOverlay" Grid.RowSpan="3" Visibility="Collapsed" IsHitTestVisible="False"
                 Background="#D90F304C" CornerRadius="12" Margin="8">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">

@@ -1,8 +1,8 @@
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Günlük dosyası: veri klasöründeki "gunluk\arsivara-YYYY-MM-DD.log". Beklenmeyen hatalar ve önemli olaylar yazılır;
-/// günlük yazılamasa bile program etkilenmez.
+/// Log file: "gunluk\arsivara-YYYY-MM-DD.log" in the data folder. Unexpected errors and important events are written to it;
+/// the program is not affected even if the log cannot be written.
 /// </summary>
 public static class Log
 {
@@ -27,10 +27,10 @@ public static class Log
                 File.AppendAllText(CurrentFile, line + Environment.NewLine);
             }
         }
-        catch (Exception) { /* günlük yazılamadı: sessizce geç */ }
+        catch (Exception) { /* could not write the log: ignore silently */ }
     }
 
-    /// <summary>Belirtilen günden eski günlük dosyalarını siler.</summary>
+    /// <summary>Deletes log files older than the given number of days.</summary>
     public static void Prune(int keepDays = 14)
     {
         try

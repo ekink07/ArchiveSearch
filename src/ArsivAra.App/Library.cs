@@ -5,9 +5,9 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Programdaki arşivler: kullanıcının eklediği arşivler ve (açıksa) disk taramasıyla bulunanlar.
-/// Liste ve içerikleri index.bin'de saklanır; açılışta değişen arşivler yeniden okunur. Disk taraması açıksa
-/// bilgisayardaki arşivler bulunur, sonra değişiklikler canlı izlenir (USN Journal ya da FileSystemWatcher).
+/// The archives in the program: those the user added and (if enabled) those found by the disk scan.
+/// The list and its contents are stored in index.bin; archives that changed are re-read at startup. If disk scanning
+/// is enabled, archives on the computer are found, then changes are watched live (USN Journal or FileSystemWatcher).
 /// </summary>
 public sealed class Library : IDisposable
 {
@@ -32,19 +32,19 @@ public sealed class Library : IDisposable
 
     public SearchIndex Current { get; private set; } = SearchIndex.Empty;
 
-    /// <summary>Arşiv listesi ya da içerikleri değişti (arka plan iş parçacığından gelebilir).</summary>
+    /// <summary>The archive list or its contents changed (may be raised from a background thread).</summary>
     public event Action? Changed;
 
-    /// <summary>Durum satırı için kısa bilgi (canlı değişiklik, tarama sonucu); arka plandan gelebilir.</summary>
+    /// <summary>Short message for the status bar (live change, scan result); may be raised from the background.</summary>
     public event Action<string>? Notice;
 
-    /// <summary>Canlı izleme koptu: tam yeniden tarama gerekiyor (arayüz kendi ilerleme çubuğuyla başlatır).</summary>
+    /// <summary>Live watching broke: a full rescan is needed (the UI starts it with its own progress bar).</summary>
     public event Action? RescanNeeded;
 
     public bool IsScanning => _scanCts != null;
     public bool IsWatching => _watcher != null;
 
-    /// <summary>Ekleme ilerlemesi. Total &lt; 0: kaç arşiv olduğu henüz bilinmiyor.</summary>
+    /// <summary>Add progress. Total &lt; 0: the number of archives is not known yet.</summary>
     public readonly record struct AddProgress(int Done, int Total, string Message);
 
     public sealed record AddResult(int Added, int Updated, int Failed, int Skipped);
@@ -64,8 +64,8 @@ public sealed class Library : IDisposable
         Publish();
         if (status == IndexFile.LoadStatus.Migrated) await Task.Run(Save);
 
-        // Elle eklenmiş arşivlerden değişenleri (üzerine yazılmış yedekler) ve parolası kaydedilmiş şifrelileri tazele;
-        // taramayla bulunanları disk taraması tazeler.
+        // Refresh manually added archives that changed (overwritten backups) and encrypted ones whose password is saved;
+        // the disk scan refreshes the ones it found.
         var changed = await Task.Run(() => loaded.Where(r => r.Manual && NeedsRefresh(r)).Select(r => r.Path).ToList());
         if (changed.Count > 0) await AddAsync(changed, progress, manual: null);
         return (status, backup);
@@ -78,8 +78,8 @@ public sealed class Library : IDisposable
     }
 
     /// <summary>
-    /// Dosya ve klasörleri ekler. Klasörlerin içindeki arşivler bulunur; arşiv olmayan dosyalar atlanır.
-    /// <paramref name="manual"/>: true elle eklendi, false disk taraması, null önceki durum korunur (yeniden okuma).
+    /// Adds files and folders. Archives inside the folders are found; files that are not archives are skipped.
+    /// <paramref name="manual"/>: true = added manually, false = disk scan, null = keep the previous state (re-read).
     /// </summary>
     public async Task<AddResult> AddAsync(IEnumerable<string> paths, IProgress<AddProgress>? progress = null, bool? manual = true,
         CancellationToken ct = default)
@@ -103,12 +103,12 @@ public sealed class Library : IDisposable
                 }
             }
             files = files.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            if (manual == true) UnExclude(files); // listeden kaldırılıp yeniden eklenen arşiv taramada da geri gelsin
+            if (manual == true) UnExclude(files); // an archive removed from the list and added again should come back in scans too
 
             int added = 0, updated = 0, failed = 0, done = 0;
             long lastPublish = Environment.TickCount64;
 
-            // Harici HDD'de aynı anda tek dosya okumak çok daha hızlı (kafa dosyalar arasında gidip gelmez).
+            // On an external HDD, reading one file at a time is much faster (the head doesn't seek back and forth between files).
             bool anyRotational = files.Any(f => DiskInfo.ForPath(f).IsRotational);
             var options = new ParallelOptions { CancellationToken = ct, MaxDegreeOfParallelism = anyRotational ? 1 : 4 };
 
@@ -130,7 +130,7 @@ public sealed class Library : IDisposable
                     rec.Manual = manual switch
                     {
                         true => true,
-                        false => old?.Manual == true, // elle eklenmiş arşiv taramayla "bulunmuş"a dönmez
+                        false => old?.Manual == true, // a manually added archive doesn't become "found" because of a scan
                         null => old?.Manual ?? true,
                     };
                     _records[path] = rec;
@@ -141,7 +141,7 @@ public sealed class Library : IDisposable
                 int completed = Interlocked.Increment(ref done);
                 progress?.Report(new AddProgress(completed, files.Count, Loc.F("StatusRead", Path.GetFileName(path))));
 
-                // Büyük eklemelerde sonuçlar okuma bitmeden aranabilsin.
+                // For large additions, make results searchable before reading finishes.
                 long now = Environment.TickCount64;
                 if (now - Interlocked.Read(ref lastPublish) > 1500)
                 {
@@ -156,7 +156,7 @@ public sealed class Library : IDisposable
         }, ct);
     }
 
-    /// <summary>Tüm arşivleri yeniden okur (ör. iç içe arşiv ayarı değişince).</summary>
+    /// <summary>Re-reads all archives (e.g. when the nested archive setting changes).</summary>
     public Task<AddResult> ReloadAllAsync(IProgress<AddProgress>? progress = null)
     {
         List<string> all;
@@ -165,7 +165,7 @@ public sealed class Library : IDisposable
     }
 
     /// <summary>
-    /// Arşivleri listeden kaldırır. Disk taramasıyla bulunanlar, taramada geri gelmesin diye hariç tutulanlara eklenir.
+    /// Removes archives from the list. Those found by the disk scan are added to the exclusions so they don't come back in a scan.
     /// </summary>
     public void Remove(IEnumerable<string> archivePaths)
     {
@@ -187,7 +187,7 @@ public sealed class Library : IDisposable
         Task.Run(Save);
     }
 
-    /// <summary>Disk taraması kapatıldı: taramayla bulunanlar listeden çıkar, izleme durur.</summary>
+    /// <summary>Disk scanning was turned off: archives found by the scan leave the list and watching stops.</summary>
     public void RemoveScanned()
     {
         StopWatching();
@@ -206,12 +206,12 @@ public sealed class Library : IDisposable
     void TrySaveSettings()
     {
         try { _settings.Save(); }
-        catch (Exception ex) { Log.Warn("Ayarlar kaydedilemedi", ex); }
+        catch (Exception ex) { Log.Warn("Could not save settings", ex); }
     }
 
-    // ---- Disk taraması ve canlı izleme ----
+    // ---- Disk scan and live watching ----
 
-    /// <summary>Bilgisayardaki arşivleri bulur (ayarlardaki kökler; boşsa tüm sabit diskler), sonra değişiklikleri izler.</summary>
+    /// <summary>Finds the archives on the computer (the roots in the settings; all fixed disks if empty), then watches for changes.</summary>
     public async Task ScanAsync(IProgress<AddProgress> progress)
     {
         _scanCts?.Cancel();
@@ -266,7 +266,7 @@ public sealed class Library : IDisposable
             result ??= await Task.Run(() => Scanner.Scan(roots, excludes, previous, OnProgress, ct,
                 useMft: NtfsVolume.IsElevated, onRead: OnRead, readOptions, PasswordStore.Get), ct);
 
-            // Elle eklenenler kalır; taramayla bulunanlar yenilenir; artık bulunmayan taranmışlar düşer.
+            // Manually added ones stay; those found by the scan are refreshed; scanned ones no longer found are dropped.
             var foundPaths = new HashSet<string>(result.Archives.Select(a => a.Path), StringComparer.OrdinalIgnoreCase);
             lock (_lock)
             {
@@ -281,13 +281,13 @@ public sealed class Library : IDisposable
             Publish();
             Save();
             StartWatching(result, excludes);
-            Log.Info($"Disk taraması: {result.Archives.Count} arşiv, {sw.Elapsed.TotalSeconds:0.0} sn");
+            Log.Info($"Disk scan: {result.Archives.Count} archives, {sw.Elapsed.TotalSeconds:0.0} s");
             Notice?.Invoke(Loc.F("StatusScanDone", result.Archives.Count, Math.Round(sw.Elapsed.TotalSeconds)));
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            Log.Error("Disk taraması", ex);
+            Log.Error("Disk scan", ex);
             Notice?.Invoke(Loc.F("StatusScanFailed", ex.Message));
         }
         finally
@@ -305,7 +305,7 @@ public sealed class Library : IDisposable
         w.DirectoryChanged += p => Enqueue(p, directory: true);
         w.RescanRequired += reason =>
         {
-            Log.Warn("Canlı izleme koptu: " + reason);
+            Log.Warn("Live watching broke: " + reason);
             _rescanRequested = true;
             _debounce.Change(5000, Timeout.Infinite);
         };
@@ -323,10 +323,10 @@ public sealed class Library : IDisposable
     void Enqueue(string path, bool directory)
     {
         lock (_pendingLock) (directory ? _pendingDirs : _pendingFiles).Add(path);
-        _debounce.Change(1500, Timeout.Infinite); // arka arkaya gelen olaylar birleşsin
+        _debounce.Change(1500, Timeout.Infinite); // coalesce events that arrive in quick succession
     }
 
-    /// <summary>Biriken değişiklikler: değişen arşivler yeniden okunur, silinen taranmış arşivler düşer, taşınan klasörler denetlenir.</summary>
+    /// <summary>Accumulated changes: changed archives are re-read, deleted scanned archives are dropped, moved folders are checked.</summary>
     void ProcessPending()
     {
         if (_rescanRequested && !IsScanning)
@@ -395,14 +395,14 @@ public sealed class Library : IDisposable
                 Notice?.Invoke(Loc.F("StatusLiveChange", changedNames.Count == 1 ? changedNames[0] : changedNames.Count.ToString(Loc.I.Culture)));
             }
         }
-        catch (Exception ex) { Log.Warn("Canlı güncelleme", ex); }
+        catch (Exception ex) { Log.Warn("Live update", ex); }
     }
 
-    // ---- Yayın ve kayıt ----
+    // ---- Publishing and saving ----
 
     void Publish()
     {
-        // Ara yayınlar ile son yayın üst üste binmesin: eski bir anlık görüntü yenisini ezmesin.
+        // Intermediate publishes and the final one must not overlap: an old snapshot must not overwrite a newer one.
         lock (_publishLock)
         {
             List<ArchiveRecord> list;
@@ -417,14 +417,14 @@ public sealed class Library : IDisposable
     {
         try
         {
-            lock (_saveLock) // aynı anda iki kayıt aynı geçici dosyaya yazmasın
+            lock (_saveLock) // two saves must not write to the same temp file at once
             {
                 List<ArchiveRecord> list;
                 lock (_lock) list = [.. _records.Values];
                 IndexFile.Save(list, AppPaths.IndexFile);
             }
         }
-        catch (Exception ex) { Log.Warn("İndeks kaydedilemedi", ex); }
+        catch (Exception ex) { Log.Warn("Could not save the index", ex); }
     }
 
     public void Dispose()

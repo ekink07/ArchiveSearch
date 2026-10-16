@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- tools/make_test_fixtures.ps1 ile üretilen örnek arşivler -->
+    <!-- Sample archives produced by tools/make_test_fixtures.ps1 -->
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

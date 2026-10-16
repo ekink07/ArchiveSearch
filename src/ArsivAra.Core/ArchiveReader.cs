@@ -9,30 +9,30 @@ namespace ArsivAra.Core;
 
 public enum ArchiveFormat { Unknown, Zip, Rar, SevenZip, Tar, CompressedTar, Iso }
 
-/// <summary>Arşiv okuma seçenekleri.</summary>
+/// <summary>Options for reading archives.</summary>
 public sealed record ReadOptions
 {
-    /// <summary>Şifreli arşivin parolası (dosya listesi ya da içerik şifreliyse).</summary>
+    /// <summary>Password of an encrypted archive (when the file list or the contents are encrypted).</summary>
     public string? Password { get; init; }
 
-    /// <summary>Arşivin içindeki arşivler (zip içinde zip) de listelensin mi.</summary>
+    /// <summary>Whether archives inside the archive (zip in zip) are listed too.</summary>
     public bool ReadNested { get; init; } = true;
 
-    /// <summary>İç içe arşiv en fazla bu kadar büyükse okunur (listelemek için açılması gerekir).</summary>
+    /// <summary>A nested archive is read only if it is at most this large (it has to be extracted to be listed).</summary>
     public long NestedMaxBytes { get; init; } = 256L << 20;
 
     public int NestedMaxCount { get; init; } = 64;
 
-    /// <summary>Solid dış arşivde (7z, sıkıştırılmış tar) içteki arşive ulaşmak öncekileri açmayı gerektirir; bundan büyükse bakılmaz.</summary>
+    /// <summary>In a solid outer archive (7z, compressed tar), reaching an inner archive requires decompressing everything before it; larger outer archives are skipped.</summary>
     public long NestedSolidMaxBytes { get; init; } = 512L << 20;
 
     public static ReadOptions Default { get; } = new();
 }
 
 /// <summary>
-/// Arşivlerin sadece dosya listesini okur; içerik açılmaz.
-/// ZIP: dosya sonundaki merkezi dizin. RAR5: Quick Open kaydı (<see cref="Rar5Lister"/>), çok parçalı ve şifreli RAR'lar SharpCompress ile.
-/// 7z/TAR: SharpCompress. tar.gz/bz2/xz/zst: baştan sona akış olarak. ISO: <see cref="IsoReader"/> (UDF, Joliet, Rock Ridge).
+/// Reads only the file list of archives; contents are not extracted.
+/// ZIP: the central directory at the end of the file. RAR5: the Quick Open record (<see cref="Rar5Lister"/>); multi-volume and encrypted RARs via SharpCompress.
+/// 7z/TAR: SharpCompress. tar.gz/bz2/xz/zst: as a stream from start to end. ISO: <see cref="IsoReader"/> (UDF, Joliet, Rock Ridge).
 /// </summary>
 public static partial class ArchiveReader
 {
@@ -43,7 +43,7 @@ public static partial class ArchiveReader
     static readonly HashSet<string> CompressedTarExtensions = new(StringComparer.OrdinalIgnoreCase) { ".tgz", ".tbz", ".tbz2", ".txz", ".tzst", ".tlz" };
     static readonly HashSet<string> IsoExtensions = new(StringComparer.OrdinalIgnoreCase) { ".iso" };
 
-    /// <summary>Sadece "x.tar" + bu sıkıştırma uzantısı arşiv sayılır (tek başına .gz dosyaları değil).</summary>
+    /// <summary>Only "x.tar" + one of these compression extensions counts as an archive (not standalone .gz files).</summary>
     static readonly HashSet<string> TarCompressionExtensions = new(StringComparer.OrdinalIgnoreCase) { ".gz", ".bz2", ".xz", ".zst", ".lz" };
 
     static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> ZipLookup = ZipExtensions.GetAlternateLookup<ReadOnlySpan<char>>();
@@ -54,7 +54,7 @@ public static partial class ArchiveReader
     static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> IsoLookup = IsoExtensions.GetAlternateLookup<ReadOnlySpan<char>>();
     static readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> TarCompressionLookup = TarCompressionExtensions.GetAlternateLookup<ReadOnlySpan<char>>();
 
-    /// <summary>Dosya seçme penceresi için desenler ("*.zip", "*.tar.gz"...).</summary>
+    /// <summary>Patterns for the file picker dialog ("*.zip", "*.tar.gz"...).</summary>
     public static IReadOnlyList<string> FilePatterns { get; } =
     [
         .. new[] { ZipExtensions, RarExtensions, SevenZipExtensions, TarExtensions, CompressedTarExtensions, IsoExtensions }
@@ -62,7 +62,7 @@ public static partial class ArchiveReader
         .. TarCompressionExtensions.Select(e => "*.tar" + e),
     ];
 
-    /// <summary>UTF-8 bayrağı olmayan ZIP/RAR adları için çözücü (bkz. <see cref="NameEncoding"/>).</summary>
+    /// <summary>Decoder for ZIP/RAR names without the UTF-8 flag (see <see cref="NameEncoding"/>).</summary>
     public static Encoding LegacyNameEncoding { get; set; } = NameEncoding.CreateDefault();
 
     [GeneratedRegex(@"\.part(\d+)\.rar$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
@@ -83,7 +83,7 @@ public static partial class ArchiveReader
         return ArchiveFormat.Unknown;
     }
 
-    /// <summary>Uzantı (".zip", sıkıştırılmış tar'da ".tar.gz"): geçici dosya adlarında biçim korunsun diye.</summary>
+    /// <summary>Extension (".zip", or ".tar.gz" for a compressed tar): so that temporary file names keep the format.</summary>
     public static string ExtensionOf(string fileName)
     {
         string ext = Path.GetExtension(fileName);
@@ -97,7 +97,7 @@ public static partial class ArchiveReader
         var format = FormatOf(fileName);
         if (format == ArchiveFormat.Unknown) return false;
 
-        // Çok parçalı RAR'da sadece ilk parçayı indeksle (x.part2.rar, x.part3.rar... atlanır; eski adlandırmada .r00 zaten arşiv sayılmaz).
+        // For a multi-volume RAR index only the first part (x.part2.rar, x.part3.rar... are skipped; with the old naming .r00 is not an archive anyway).
         if (format == ArchiveFormat.Rar)
         {
             foreach (var m in RarPartRegex().EnumerateMatches(fileName))
@@ -109,7 +109,7 @@ public static partial class ArchiveReader
         return true;
     }
 
-    // 64 KB tampon: büyük ZIP'lerin merkezi dizini sıralı okunurken binlerce küçük okuma çağrısı olmasın.
+    // 64 KB buffer: avoids thousands of small read calls while the central directory of a large ZIP is read sequentially.
     internal static FileStream OpenShared(string path, int bufferSize = 64 * 1024) =>
         new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, bufferSize, FileOptions.RandomAccess);
 
@@ -145,7 +145,7 @@ public static partial class ArchiveReader
                     using var fs = OpenShared(path);
                     return new Listing(ReadZip(fs), false);
                 }
-                catch (InvalidDataException) { } // uzantısı .zip ama başka biçim
+                catch (InvalidDataException) { } // .zip extension but a different format
                 return ListSharp([path], password);
 
             case ArchiveFormat.Rar:
@@ -163,7 +163,7 @@ public static partial class ArchiveReader
         }
     }
 
-    /// <summary>Arşiv bir akışta (iç içe arşiv): biçim ada göre seçilir.</summary>
+    /// <summary>Archive in a stream (nested archive): the format is chosen by name.</summary>
     internal static Listing ListStream(Stream s, string nameHint, string? password)
     {
         switch (FormatOf(nameHint))
@@ -193,7 +193,7 @@ public static partial class ArchiveReader
         }
     }
 
-    /// <summary>RAR5 + Quick Open varsa hızlı yol; aksi halde (çok parçalı, şifreli, eski RAR ya da herhangi bir hatada) null.</summary>
+    /// <summary>Fast path for RAR5 with Quick Open; otherwise (multi-volume, encrypted, older RAR, or on any error) null.</summary>
     public static ArchiveEntry[]? TryReadRar5QuickOpen(string path) => TryReadRar5QuickOpen(path, out _);
 
     static ArchiveEntry[]? TryReadRar5QuickOpen(string path, out bool solid)
@@ -201,13 +201,13 @@ public static partial class ArchiveReader
         solid = false;
         try
         {
-            using var fs = OpenShared(path, bufferSize: 0); // Rar5Lister kendi 64 KB penceresini tutar
+            using var fs = OpenShared(path, bufferSize: 0); // Rar5Lister keeps its own 64 KB window
             return Rar5Lister.TryList(fs, out solid);
         }
         catch (Exception) { return null; }
     }
 
-    /// <summary>Çok parçalı RAR'ın tüm parçaları (tek parçalıysa sadece kendisi).</summary>
+    /// <summary>All parts of a multi-volume RAR (only the file itself if it is single-volume).</summary>
     internal static IReadOnlyList<string> RarParts(string path)
     {
         try
@@ -244,11 +244,11 @@ public static partial class ArchiveReader
         ? ArchiveFactory.OpenArchive(parts.Select(p => new FileInfo(p)).ToList(), CreateReaderOptions(password))
         : ArchiveFactory.OpenArchive(parts[0], CreateReaderOptions(password));
 
-    /// <summary>SharpCompress ile okur (Quick Open'ı doğrulamak için; çok parçalı RAR'da tüm parçalar).</summary>
+    /// <summary>Reads with SharpCompress (to verify Quick Open; all parts for a multi-volume RAR).</summary>
     public static ArchiveEntry[] ReadWithSharpCompress(string path, string? password = null) =>
         ListSharp(FormatOf(path) == ArchiveFormat.Rar ? RarParts(path) : [path], password).Entries;
 
-    // Önce girdiler, sonra IsSolid: başlığı şifreli RAR5'te IsSolid önce sorulursa liste boş döner (SharpCompress).
+    // Entries first, then IsSolid: for a RAR5 with encrypted headers, querying IsSolid first returns an empty list (SharpCompress).
     static Listing ListSharp(IReadOnlyList<string> parts, string? password)
     {
         using var archive = OpenSharp(parts, password);
@@ -264,7 +264,7 @@ public static partial class ArchiveReader
         return new Listing(entries, archive.IsSolid);
     }
 
-    /// <summary>Sıkıştırılmış tar (ve tek dosyalık .gz): merkezi dizin yok, baştan sona okunur.</summary>
+    /// <summary>Compressed tar (and single-file .gz): no central directory, read from start to end.</summary>
     static Listing ListForwardOnly(Stream s, string? password)
     {
         using var reader = ReaderFactory.OpenReader(s, CreateReaderOptions(password, leaveOpen: true));
@@ -285,7 +285,7 @@ public static partial class ArchiveReader
         return result;
     }
 
-    /// <summary>SharpCompress girdileri: klasörler '/' ile biter; çok parçalı arşivde aynı dosya birden fazla görünürse bir kez alınır.</summary>
+    /// <summary>SharpCompress entries: folders end with '/'; a file that appears more than once in a multi-volume archive is taken once.</summary>
     static ArchiveEntry[] ToEntries(IEnumerable<IEntry> entries)
     {
         var result = new List<ArchiveEntry>();
@@ -303,7 +303,7 @@ public static partial class ArchiveReader
         return [.. result];
     }
 
-    // ---- İç içe arşivler ----
+    // ---- Nested archives ----
 
     static ArchiveRecord[] ReadNested(string path, long outerSize, Listing listing, ReadOptions options)
     {
@@ -322,7 +322,7 @@ public static partial class ArchiveReader
             ArchiveExtractor.ForEach(path, candidates.Keys.ToHashSet(StringComparer.Ordinal), options.Password,
                 (item, stream) => result.Add(ReadInner(path, candidates[item.Path], stream, options.Password)));
         }
-        catch (Exception) { /* içerik şifreli ya da okunamıyor: dış arşivin listesi yine de geçerli */ }
+        catch (Exception) { /* contents encrypted or unreadable: the outer archive's listing is still valid */ }
         result.Sort((a, b) => string.CompareOrdinal(a.InnerPath, b.InnerPath));
         return [.. result];
     }
@@ -350,7 +350,7 @@ public static partial class ArchiveReader
         }
     }
 
-    /// <summary>Akışı aranabilir hâle getirir: küçükse bellekte, büyükse kapanınca silinen geçici dosyada.</summary>
+    /// <summary>Makes the stream seekable: in memory if small, otherwise in a temporary file that is deleted on close.</summary>
     internal static Stream TempBuffer(Stream src, long size)
     {
         Stream dst = size is >= 0 and <= 32L << 20
@@ -374,7 +374,7 @@ public static partial class ArchiveReader
         try { return d.Kind == DateTimeKind.Utc ? d.Ticks : d.ToUniversalTime().Ticks; } catch { return 0; }
     }
 
-    /// <summary>Hatanın türü (arayüz kendi dilinde gösterir) ve ayrıntısı.</summary>
+    /// <summary>The kind of error (the UI shows it in its own language) and its details.</summary>
     public static (ArchiveError Kind, string Message) Describe(Exception ex, bool passwordGiven = false)
     {
         if (ex is AggregateException { InnerException: { } inner }) ex = inner;
@@ -384,13 +384,13 @@ public static partial class ArchiveReader
             return (ArchiveError.Encrypted, ex.Message);
         if (ex is UnauthorizedAccessException) return (ArchiveError.AccessDenied, ex.Message);
         if (ex is IOException io && io.HResult == unchecked((int)0x80070020)) return (ArchiveError.InUse, ex.Message);
-        // Parola verilmişken bozuk görünen veri (7z'de "Data Error", RAR'da bozuk başlık) çoğunlukla yanlış paroladır.
+        // Data that looks corrupt when a password was given ("Data Error" in 7z, a corrupt header in RAR) usually means a wrong password.
         if (passwordGiven && ex is not (FileNotFoundException or DirectoryNotFoundException or OperationCanceledException or OutOfMemoryException))
             return (ArchiveError.Encrypted, ex.Message);
         return (ArchiveError.Other, $"{ex.GetType().Name}: {ex.Message}");
     }
 
-    /// <summary>Arşivdeki yolun son parçasından güvenli bir dosya adı: "../../" gibi yollar dışarı yazamaz.</summary>
+    /// <summary>A safe file name from the last segment of the path in the archive: paths like "../../" cannot write outside.</summary>
     public static string SafeFileName(string entryPath)
     {
         var p = entryPath.Replace('\\', '/').TrimEnd('/');
@@ -398,8 +398,8 @@ public static partial class ArchiveReader
     }
 
     /// <summary>
-    /// Tek bir yol parçası: geçersiz karakterler (: * ? " &lt; &gt; | ve kontrol karakterleri) atılır, sondaki nokta ve boşluk
-    /// silinir (Windows siler), Windows'un ayrılmış adlarının (CON, NUL, COM1...) başına "_" eklenir.
+    /// A single path segment: invalid characters (: * ? " &lt; &gt; | and control characters) are removed, trailing dots and spaces
+    /// are stripped (Windows strips them), and Windows reserved names (CON, NUL, COM1...) get a "_" prefix.
     /// </summary>
     public static string SafeSegment(string segment)
     {

@@ -1,9 +1,5 @@
-Arşiv Ara - üçüncü taraf bileşenler / Third-party notices
-=========================================================
-
-Arşiv Ara, Verlora Studios tarafından yayımlanır. Aşağıdaki açık kaynak kodlar programın
-içine derlenmiştir; kaynak kodları depoda src/ThirdParty klasöründedir. Lisans metinleri
-özgün hâliyle (İngilizce) verilmiştir.
+Arşiv Ara - third-party notices
+===============================
 
 Arşiv Ara is published by Verlora Studios. The open-source code listed below is compiled
 into the program; its source code is in the src/ThirdParty folder of the repository.

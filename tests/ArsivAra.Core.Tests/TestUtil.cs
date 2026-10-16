@@ -4,13 +4,13 @@ namespace ArsivAra.Core.Tests;
 
 static class TestSetup
 {
-    /// <summary>Testler kullanıcının gerçek veri klasörüne (günlük, parolalar) yazmasın: AppPaths ilk kullanılmadan önce ayarlanır.</summary>
+    /// <summary>Keeps tests from writing to the user's real data folder (log, passwords): set before AppPaths is first used.</summary>
     [System.Runtime.CompilerServices.ModuleInitializer]
     internal static void Init() =>
         Environment.SetEnvironmentVariable("ARSIVARA_DATA", Path.Combine(Path.GetTempPath(), "arsivara-test-veri"));
 }
 
-/// <summary>tools/make_test_fixtures.ps1 ile üretilen örnek arşivler ve kaynak ağacın beklenen içeriği.</summary>
+/// <summary>Sample archives produced by tools/make_test_fixtures.ps1 and the expected contents of the source tree.</summary>
 static class Fx
 {
     public const string Password = "Parola123";
@@ -18,18 +18,18 @@ static class Fx
     public static string Dir => Path.Combine(AppContext.BaseDirectory, "Fixtures");
     public static string File(string name) => Path.Combine(Dir, name);
 
-    /// <summary>Depo kökü (ArsivAra.sln'in bulunduğu klasör); kaynak dosyalarını denetleyen testler için.</summary>
+    /// <summary>Repository root (the folder containing ArsivAra.sln); for tests that inspect source files.</summary>
     public static string RepoRoot
     {
         get
         {
             var d = new DirectoryInfo(AppContext.BaseDirectory);
             while (d != null && !System.IO.File.Exists(Path.Combine(d.FullName, "ArsivAra.sln"))) d = d.Parent;
-            return d?.FullName ?? throw new DirectoryNotFoundException("ArsivAra.sln bulunamadı");
+            return d?.FullName ?? throw new DirectoryNotFoundException("ArsivAra.sln not found");
         }
     }
 
-    /// <summary>Kaynak ağaçtaki dosyalar (kule.png hariç; o System.Drawing ile üretildiği için sadece varlığına bakılır).</summary>
+    /// <summary>Files in the source tree (except kule.png; it is generated with System.Drawing, so only its presence is checked).</summary>
     public static readonly Dictionary<string, byte[]> Files = new()
     {
         ["okubeni.txt"] = Encoding.UTF8.GetBytes("Arşiv Ara test dosyası.\r\n"),
@@ -43,7 +43,7 @@ static class Fx
     static byte[] RandomBytes()
     {
         var b = new byte[48 * 1024];
-        new Random(1234).NextBytes(b); // betikteki [Random]::new(1234) ile aynı dizi
+        new Random(1234).NextBytes(b); // same sequence as [Random]::new(1234) in the script
         return b;
     }
 

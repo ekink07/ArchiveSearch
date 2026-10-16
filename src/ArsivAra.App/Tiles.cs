@@ -6,7 +6,7 @@ using ArsivAra.Core;
 
 namespace ArsivAra.App;
 
-/// <summary>Kareli görünümde tek bir dosya/klasör.</summary>
+/// <summary>A single file/folder in the tile view.</summary>
 public sealed class TileVM(int position, ArchiveRecord archive, ArchiveEntry entry, ImageSource? icon, double iconSize) : INotifyPropertyChanged
 {
     public int Position { get; } = position;
@@ -25,7 +25,7 @@ public sealed class TileVM(int position, ArchiveRecord archive, ArchiveEntry ent
         set { _thumbnail = value; OnChanged(); OnChanged(nameof(DisplayImage)); }
     }
 
-    /// <summary>Resimse küçük resmi (yüklendiyse), değilse dosya türü simgesi.</summary>
+    /// <summary>The thumbnail for an image (once loaded), otherwise the file type icon.</summary>
     public ImageSource? DisplayImage => _thumbnail ?? icon;
 
     bool _selected;
@@ -39,12 +39,12 @@ public sealed class TileVM(int position, ArchiveRecord archive, ArchiveEntry ent
     void OnChanged([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
-/// <summary>Kareli görünümün bir satırı (pencere genişliğine sığan kadar kare).</summary>
+/// <summary>One row of the tile view (as many tiles as fit the window width).</summary>
 public sealed record TileRow(IReadOnlyList<TileVM> Items);
 
 /// <summary>
-/// Sonuçları satırlara bölen sanal liste: satırlar sadece ekranda göründükçe oluşturulur,
-/// böylece milyonlarca sonuçta da kareli görünüm akıcı kalır.
+/// Virtual list that splits the results into rows: rows are created only as they appear on screen,
+/// so the tile view stays smooth even with millions of results.
 /// </summary>
 public sealed class GridRowList(int itemCount, int perRow, Func<int, TileVM> createTile) : IList
 {

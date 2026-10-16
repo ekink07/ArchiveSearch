@@ -1,4 +1,4 @@
-# Derleme çıktıları
+# Build output
 bin/
 obj/
 publish/
@@ -7,5 +7,5 @@ publish-*/
 .vs/
 .idea/
 
-# Taşınabilir kullanımda exe'nin yanında oluşan veri klasörü
+# Data folder created next to the exe in portable mode
 ArsivAra-veri/

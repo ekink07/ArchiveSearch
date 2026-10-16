@@ -12,23 +12,23 @@ public sealed class ResultRow(ResultList owner, int position, ArchiveRecord arch
 
     public string Name => Entry.Name;
     public string Folder => Entry.Folder;
-    /// <summary>Arşivin tam yolu (iç içe arşivde "D:\yedek.zip › Yedekler/eski.zip"); ipucunda görünür.</summary>
+    /// <summary>Full path of the archive (for a nested archive "D:\backup.zip › Backups/old.zip"); shown in the tooltip.</summary>
     public string Archive => ArchiveRecord.DisplayPath;
     public string ArchiveName => ArchiveRecord.DisplayName;
     public string SizeText => Entry.IsDirectory ? "" : Format.Size(Entry.Size);
     public string ModifiedText => Format.Date(Entry.MtimeUtcTicks);
-    /// <summary>Windows dosya türü simgesi (klasör, Word, Fotoğraflar…), liste yakınlaştırmasına uygun boyutta.</summary>
+    /// <summary>Windows file type icon (folder, Word, Photos…), sized for the list zoom.</summary>
     public System.Windows.Media.ImageSource? Icon => IconProvider.For(Entry.Name, Entry.IsDirectory, Owner.IconSize);
     public double IconSize => Owner.IconSize;
 
-    // Sanal listede aynı satır her istekte yeniden oluşturulur; seçim takibi için konuma göre eşitlik.
+    // In the virtual list the same row is recreated on every request; equality by position for selection tracking.
     public override bool Equals(object? obj) => obj is ResultRow r && r.Owner == Owner && r.Position == Position;
     public override int GetHashCode() => HashCode.Combine(Owner, Position);
 }
 
 /// <summary>
-/// Milyonlarca sonucu belleğe satır nesnesi olarak doldurmadan WPF'e veren sanal liste:
-/// satır nesneleri sadece ekranda görünenler için, istendiği anda oluşturulur.
+/// Virtual list that hands millions of results to WPF without filling memory with row objects:
+/// row objects are created on demand, only for the rows visible on screen.
 /// </summary>
 public sealed class ResultList(SearchIndex index, int[] hits, double iconSize = 16) : IList
 {

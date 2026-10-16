@@ -17,9 +17,9 @@ public class ContentSearchTests
         var result = ContentSearch.Filter(index, r.Hits, r.ContentTerms!, _ => null,
             new Progress<(int Done, int Total)>(_ => Interlocked.Increment(ref reported)), CancellationToken.None);
 
-        Assert.Equal(5, result.Hits.Length); // her arşivde "Şirket Raporu 2023.txt"
+        Assert.Equal(5, result.Hits.Length); // "Şirket Raporu 2023.txt" in every archive
         Assert.All(result.Hits, h => Assert.Equal("Şirket Raporu 2023.txt", index.Get(h).Entry.Name));
-        Assert.Equal(15, result.Searched);   // arşiv başına 3 .txt
+        Assert.Equal(15, result.Searched);   // 3 .txt files per archive
         Assert.Equal(0, result.Failed);
     }
 
@@ -36,7 +36,7 @@ public class ContentSearchTests
     [Fact]
     public void Reads_office_documents_with_split_runs()
     {
-        // Word bir kelimeyi birkaç "run"a bölebilir: "Mer" + "haba"
+        // Word can split a word into several "runs": "Mer" + "haba"
         string docx = Path.Combine(Fx.TempDir(), "belge.docx");
         using (var zip = ZipFile.Open(docx, ZipArchiveMode.Create))
         using (var w = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), Encoding.UTF8))
@@ -45,7 +45,7 @@ public class ContentSearchTests
         string text = ContentSearch.ExtractText("belge.docx", File.OpenRead(docx));
         Assert.Contains("Merhaba & Dünya", text);
         Assert.Contains("İkinci", text);
-        Assert.DoesNotContain("DünyaİkinciX", text + "X"); // paragraflar arasında boşluk var
+        Assert.DoesNotContain("DünyaİkinciX", text + "X"); // paragraphs are separated by whitespace
     }
 
     [Fact]

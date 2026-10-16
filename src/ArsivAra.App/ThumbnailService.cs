@@ -6,23 +6,23 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Arşiv içindeki resimlerin küçük resimlerini arka planda üretir. Sadece ekranda görünen kareler istenir;
-/// en son istenen önce yapılır ve hızlı kaydırırken eski istekler atılır. Üretilen küçük resimler bellekte tutulur.
+/// Generates thumbnails of images inside archives in the background. Only tiles visible on screen are requested;
+/// the most recent request is served first and old requests are dropped while scrolling fast. Generated thumbnails are kept in memory.
 /// </summary>
 public sealed class ThumbnailService : IDisposable
 {
     static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
         { ".jpg", ".jpeg", ".jfif", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".ico" };
 
-    const long MaxImageBytes = 40L << 20; // daha büyük resimlerde simge yeter
-    const int DecodeWidth = 256;          // en büyük kare boyutu
+    const long MaxImageBytes = 40L << 20; // for larger images the icon is enough
+    const int DecodeWidth = 256;          // largest tile size
     const int MaxPending = 96;
     const int MaxCached = 3000;
     const int Workers = 2;
 
     readonly ArchiveEntryReader _reader = new();
     readonly object _lock = new();
-    readonly LinkedList<TileVM> _pending = new();               // baş: en yeni istek
+    readonly LinkedList<TileVM> _pending = new();               // head: newest request
     readonly Dictionary<(string, string), ImageSource?> _cache = new();
     readonly Queue<(string, string)> _cacheOrder = new();
     int _running;
@@ -47,7 +47,7 @@ public sealed class ThumbnailService : IDisposable
         Task.Run(Work);
     }
 
-    /// <summary>Yeni arama/görünümde ekranda olmayan eski istekleri at.</summary>
+    /// <summary>On a new search/view, drop old requests that are no longer on screen.</summary>
     public void CancelPending()
     {
         lock (_lock) _pending.Clear();
@@ -78,7 +78,7 @@ public sealed class ThumbnailService : IDisposable
                     while (_cacheOrder.Count > MaxCached) _cache.Remove(_cacheOrder.Dequeue());
                 }
             }
-            if (img != null) tile.Thumbnail = img; // WPF bağlama motoru başka iş parçacığından gelen bildirimi aktarır
+            if (img != null) tile.Thumbnail = img; // the WPF binding engine marshals the notification coming from another thread
         }
     }
 
@@ -97,7 +97,7 @@ public sealed class ThumbnailService : IDisposable
             bmp.Freeze();
             return bmp;
         }
-        catch (Exception) { return null; } // bozuk ya da Windows'un çözemediği biçim: simge kalır
+        catch (Exception) { return null; } // corrupt, or a format Windows can't decode: the icon stays
     }
 
     public void Dispose() => _reader.Dispose();

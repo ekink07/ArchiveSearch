@@ -20,7 +20,7 @@ public class ArchiveReaderTests
         var files = rec.Entries.Where(e => !e.IsDirectory).ToDictionary(e => e.Path, e => e.Size);
         foreach (var (path, content) in Fx.Files)
         {
-            Assert.True(files.ContainsKey(path), $"{fixture}: '{path}' yok. Bulunanlar: {string.Join(" | ", files.Keys)}");
+            Assert.True(files.ContainsKey(path), $"{fixture}: '{path}' missing. Found: {string.Join(" | ", files.Keys)}");
             Assert.Equal(content.Length, files[path]);
         }
         Assert.Contains(Fx.Png, files.Keys);
@@ -63,7 +63,7 @@ public class ArchiveReaderTests
     [Fact]
     public void Old_dos_zip_names_are_decoded_as_turkish()
     {
-        ArchiveReader.LegacyNameEncoding = NameEncoding.ForCodePage(857); // test makinesinin dilinden bağımsız
+        ArchiveReader.LegacyNameEncoding = NameEncoding.ForCodePage(857); // independent of the test machine's language
         var rec = Fx.Read("zip-cp857.zip");
         Assert.Contains(rec.Entries, e => e.Path == "Belgeler/Şirket Raporu 2023.txt");
         Assert.Contains(rec.Entries, e => e.Path == "Fotoğraflar/İstanbul/kule.png");
@@ -102,7 +102,7 @@ public class ArchiveReaderTests
         {
             var rec = Fx.Read(fixture);
             Assert.Null(rec.Error);
-            Assert.Equal(Fx.Files["Veri/rastgele.bin"], Fx.Extract(rec, "Veri/rastgele.bin")); // parçalara bölünmüş dosya
+            Assert.Equal(Fx.Files["Veri/rastgele.bin"], Fx.Extract(rec, "Veri/rastgele.bin")); // file split across the volumes
         }
     }
 
@@ -166,9 +166,9 @@ public class ArchiveReaderTests
         string path = Fx.File("rar5-qo.rar");
         var fast = ArchiveReader.TryReadRar5QuickOpen(path);
         Assert.NotNull(fast);
-        Assert.True(Rar5Lister.LastCacheHits > 0, "Quick Open kaydı kullanılmadı");
+        Assert.True(Rar5Lister.LastCacheHits > 0, "Quick Open record was not used");
 
-        // Aynı arşivi SharpCompress başlıktan başlığa gezerek okusun; sonuçlar birebir aynı olmalı.
+        // Let SharpCompress read the same archive by walking from header to header; the results must be identical.
         using var archive = SharpCompress.Archives.ArchiveFactory.OpenArchive(path, new SharpCompress.Readers.ReaderOptions());
         var slow = archive.Entries.Select(e =>
         {
@@ -179,7 +179,7 @@ public class ArchiveReaderTests
         static string Key(ArchiveEntry e) => $"{e.Path}|{e.IsDirectory}|{e.Size}|{e.Crc}";
         Assert.Equal(slow.Order(), fast!.Select(Key).Order());
 
-        // Çok parçalı ve başlığı şifreli RAR5'te hızlı yol kullanılmaz.
+        // The fast path is not used for multi-volume or header-encrypted RAR5.
         Assert.Null(ArchiveReader.TryReadRar5QuickOpen(Fx.File("rar5-cok-parca.part1.rar")));
         Assert.Null(ArchiveReader.TryReadRar5QuickOpen(Fx.File("rar5-sifreli-baslik.rar")));
     }

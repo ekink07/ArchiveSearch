@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- SharpCompress 0.50.4, kaynak kod olarak (github.com/adamhathcock/sharpcompress, commit c083c6e).
-       Kaynağı, yerel değişiklikleri ve güncelleme yolu: ../README.md. Lisanslar: ../../../THIRD-PARTY-NOTICES.txt -->
+  <!-- SharpCompress 0.50.4 as source code (github.com/adamhathcock/sharpcompress, commit c083c6e).
+       Origin and update steps: ../README.md. Licenses: ../../../THIRD-PARTY-NOTICES.txt -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>SharpCompress</AssemblyName>
@@ -9,11 +9,11 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Dışarıdan alınmış kod: uyarılar ve kod çözümleyicileri bu projede kapalı -->
+    <!-- Third-party code: warnings and code analyzers are off in this project -->
     <WarningLevel>0</WarningLevel>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
-    <!-- Kökteki Directory.Build.props'un Arşiv Ara bilgileri bu derlemeye yazılmasın -->
+    <!-- Keep the Arşiv Ara details from the root Directory.Build.props out of this assembly -->
     <Version>0.50.4</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>SharpCompress</Product>

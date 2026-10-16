@@ -9,8 +9,8 @@ using Microsoft.Win32;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Ayarlar. Dil seçimi anında uygulanır; diğerleri pencere kapanınca ayarlara yazılır, ana pencere değişenlere göre davranır
-/// (disk taramasını başlatır/durdurur, iç içe arşiv ayarı değişince arşivleri yeniden okur).
+/// Settings. The language choice applies immediately; the others are written to the settings when the window closes, and the
+/// main window acts on what changed (starts/stops the disk scan, re-reads archives when the nested archive setting changes).
 /// </summary>
 public partial class SettingsWindow : Window
 {
@@ -21,7 +21,7 @@ public partial class SettingsWindow : Window
     readonly string _originalLanguage;
     bool _loading = true;
 
-    /// <summary>"Şimdi tara" seçildi.</summary>
+    /// <summary>"Scan now" was chosen.</summary>
     public bool ScanRequested { get; private set; }
 
     public SettingsWindow(Settings settings)
@@ -30,11 +30,13 @@ public partial class SettingsWindow : Window
         _settings = settings;
         _originalLanguage = settings.Language;
 
-        LanguageBox.Items.Add(new ComboBoxItem { Content = Loc.T("LangSystem"), Tag = "" });
+        LanguageBox.Items.Add(new ComboBoxItem { Content = Loc.T("LangSystem"), Tag = Strings.SystemLanguage });
         foreach (var lang in Strings.Languages)
             LanguageBox.Items.Add(new ComboBoxItem { Content = Strings.NativeNames[lang], Tag = lang });
-        LanguageBox.SelectedItem = LanguageBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == settings.Language)
-                                   ?? LanguageBox.Items[0];
+        // No saved choice (first start) means the default language, English.
+        string current = string.IsNullOrEmpty(settings.Language) ? Strings.DefaultLanguage : settings.Language;
+        LanguageBox.SelectedItem = LanguageBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == current)
+                                   ?? LanguageBox.Items[1];
 
         ScanDisksBox.IsChecked = settings.ScanDisks;
         FastScanBox.IsChecked = settings.FastScan;
@@ -57,7 +59,7 @@ public partial class SettingsWindow : Window
         if (_loading || LanguageBox.SelectedItem is not ComboBoxItem item) return;
         string chosen = (string)item.Tag;
         _settings.Language = chosen;
-        Loc.I.Set(Strings.Resolve(chosen)); // tüm pencereler hemen yeni dile geçer
+        Loc.I.Set(Strings.Resolve(chosen)); // all windows switch to the new language immediately
         ((ComboBoxItem)LanguageBox.Items[0]).Content = Loc.T("LangSystem");
         DataDirText.Text = Loc.F("SetDataDir", AppPaths.DataDir) + (AppPaths.IsPortable ? $" ({Loc.T("SetPortable")})" : "");
         UpdateTempSize();
@@ -133,7 +135,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    /// <summary>Pencere nasıl kapanırsa kapansın (düğme, Esc, X) seçimler ayarlara yazılır.</summary>
+    /// <summary>However the window is closed (button, Esc, X), the choices are written to the settings.</summary>
     void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _settings.ScanDisks = ScanDisksBox.IsChecked == true;
@@ -143,7 +145,7 @@ public partial class SettingsWindow : Window
         _settings.ReadNested = NestedBox.IsChecked == true;
         if (TempDaysBox.SelectedItem is ComboBoxItem days) _settings.TempRetentionDays = (int)days.Tag;
         try { _settings.Save(); }
-        catch (Exception ex) { Log.Warn("Ayarlar kaydedilemedi", ex); }
+        catch (Exception ex) { Log.Warn("Could not save settings", ex); }
     }
 
     public bool LanguageChanged => _settings.Language != _originalLanguage;

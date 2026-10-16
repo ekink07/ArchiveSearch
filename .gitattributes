@@ -1,4 +1,4 @@
-# Metin dosyaları depoda LF tutulur; ikili dosyalar olduğu gibi.
+# Text files are stored with LF in the repository; binary files as they are.
 * text=auto
 *.sln text eol=crlf
 *.png binary

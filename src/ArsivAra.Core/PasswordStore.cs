@@ -5,10 +5,10 @@ using System.Text.Json;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Şifreli arşivlerin parolaları. "Hatırla" seçilmezse sadece program açıkken bellekte tutulur;
-/// seçilirse Windows'un DPAPI'siyle bu Windows hesabına bağlı olarak şifrelenip veri klasörüne yazılır
-/// (başka bir hesapta ya da bilgisayarda çözülemez, düz metin olarak hiçbir yerde durmaz).
-/// Anahtar: arşivin <see cref="ArchiveRecord.DisplayPath"/>'i.
+/// Passwords for encrypted archives. If "Remember" is not selected, they are kept in memory only while the program is running;
+/// if it is selected, they are encrypted with Windows DPAPI, tied to this Windows account, and written to the data folder
+/// (they cannot be decrypted on another account or computer, and are never stored anywhere as plain text).
+/// Key: the archive's <see cref="ArchiveRecord.DisplayPath"/>.
 /// </summary>
 public static class PasswordStore
 {
@@ -17,7 +17,7 @@ public static class PasswordStore
     static Dictionary<string, string>? _saved;
     static readonly byte[] Entropy = "ArsivAra.parolalar.v1"u8.ToArray();
 
-    /// <summary>Kayıt dosyası (testler değiştirebilir).</summary>
+    /// <summary>Storage file (tests can change it).</summary>
     public static string FilePath { get; set; } = Path.Combine(AppPaths.DataDir, "parolalar.bin");
 
     public static string? Get(string key)
@@ -29,7 +29,7 @@ public static class PasswordStore
         }
     }
 
-    /// <summary>Arşiv kaydı için parola: önce kendisi, iç içe arşivde sonra dıştaki arşiv.</summary>
+    /// <summary>Password for an archive record: first its own, then, for a nested archive, the outer archive's.</summary>
     public static string? For(ArchiveRecord rec) => Get(rec.DisplayPath) ?? (rec.IsNested ? Get(rec.Path) : null);
 
     public static void Set(string key, string password, bool remember)
@@ -60,7 +60,7 @@ public static class PasswordStore
         get { lock (Gate) return Saved.Count; }
     }
 
-    /// <summary>Kayıtlı tüm parolaları siler (oturumdakiler de unutulur).</summary>
+    /// <summary>Deletes all saved passwords (the session ones are forgotten too).</summary>
     public static void ClearAll()
     {
         lock (Gate)
@@ -71,7 +71,7 @@ public static class PasswordStore
         }
     }
 
-    /// <summary>Testler için: dosyadan yeniden okunsun.</summary>
+    /// <summary>For tests: forces a reload from the file.</summary>
     internal static void ResetCache()
     {
         lock (Gate)
@@ -94,7 +94,7 @@ public static class PasswordStore
                 if (d != null) return new Dictionary<string, string>(d, StringComparer.OrdinalIgnoreCase);
             }
         }
-        catch (Exception ex) { Log.Warn("Kayıtlı parolalar okunamadı (başka bir hesap ya da bilgisayar olabilir)", ex); }
+        catch (Exception ex) { Log.Warn("Could not read saved passwords (possibly a different account or computer)", ex); }
         return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -112,7 +112,7 @@ public static class PasswordStore
             File.WriteAllBytes(tmp, Protect(JsonSerializer.SerializeToUtf8Bytes(_saved)));
             File.Move(tmp, FilePath, overwrite: true);
         }
-        catch (Exception ex) { Log.Warn("Parolalar kaydedilemedi", ex); }
+        catch (Exception ex) { Log.Warn("Could not save passwords", ex); }
     }
 
     // ---- DPAPI (CryptProtectData / CryptUnprotectData) ----

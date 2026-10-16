@@ -5,10 +5,10 @@ using System.Text;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// UTF-8 bayrağı olmayan arşiv dosya adlarını çözer:
-/// bayt dizisi geçerli UTF-8 ise UTF-8 (birçok araç bayrak koymadan UTF-8 yazar),
-/// değilse eski DOS kod sayfası. Kullanıcı kültürü Türkçe ise CP857, yoksa sistemin OEM kod sayfası.
-/// (Sistem yerel ayarı en-US olup kültürü tr-TR olan makinelerde OEM 437 yanlış sonuç verir.)
+/// Decodes archive file names that lack the UTF-8 flag:
+/// UTF-8 if the byte sequence is valid UTF-8 (many tools write UTF-8 without setting the flag),
+/// otherwise the legacy DOS code page: CP857 if the user culture is Turkish, otherwise the system OEM code page.
+/// (On machines whose system locale is en-US but whose culture is tr-TR, OEM 437 gives wrong results.)
 /// </summary>
 public sealed class NameEncoding : Encoding
 {
@@ -35,7 +35,7 @@ public sealed class NameEncoding : Encoding
         catch { return new NameEncoding(GetEncoding(437)); }
     }
 
-    /// <summary>Belirli bir DOS kod sayfasıyla (ör. 857) çözücü; sistemin dilinden bağımsız.</summary>
+    /// <summary>Decoder for a specific DOS code page (e.g. 857), independent of the system language.</summary>
     public static NameEncoding ForCodePage(int codePage)
     {
         RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -57,7 +57,7 @@ public sealed class NameEncoding : Encoding
     public override string GetString(byte[] bytes, int index, int count) =>
         Pick(bytes.AsSpan(index, count)).GetString(bytes, index, count);
 
-    // Yazma tarafı kullanılmaz; yine de tutarlı olsun diye UTF-8.
+    // The encoding side is not used; it is UTF-8 anyway, for consistency.
     public override int GetByteCount(char[] chars, int index, int count) => UTF8.GetByteCount(chars, index, count);
     public override int GetBytes(char[] chars, int charIndex, int charCount, byte[] bytes, int byteIndex) =>
         UTF8.GetBytes(chars, charIndex, charCount, bytes, byteIndex);

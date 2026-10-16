@@ -10,13 +10,13 @@ Archive hineinziehen (oder alle finden lassen), ein paar Buchstaben tippen und j
 
 [English](README.md) · [Türkçe](README.tr.md) · **Deutsch** · [Español](README.es.md)
 
-[![Release](https://img.shields.io/github/v/release/YOUR_GITHUB_USER/ArsivAra?color=F7861F&label=release)](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest)
-[![CI](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/ArsivAra/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ekink07/ArchiveSearch?color=F7861F&label=release)](https://github.com/ekink07/ArchiveSearch/releases/latest)
+[![CI](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/ekink07/ArchiveSearch/actions/workflows/ci.yml)
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
 ![x64 | ARM64](https://img.shields.io/badge/x64%20%7C%20ARM64-0B1B2E)
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-0B1B2E)](#lizenz)
 
-<img src="docs/images/search.png" width="860" alt="Die Suche 'toplanti' findet Besprechungsnotizen in zwei Backups, eines davon in einem verschachtelten Archiv; die Vorschau zeigt Text und beide Versionen">
+<img src="docs/images/search.png" width="860" alt="Die Suche 'meeting' findet Besprechungsnotizen in zwei Backups, eines davon in einem verschachtelten Archiv; die Vorschau zeigt Text und beide Versionen">
 
 </div>
 
@@ -41,7 +41,7 @@ so wie [Everything](https://www.voidtools.com/) Dateinamen auf der Festplatte du
 | **Entpacken und ziehen** | `Strg + E` entpackt die Auswahl in einen Ordner; Treffer lassen sich direkt in den Explorer ziehen. |
 | **Liste, Kacheln, Sortierung** | Windows-Symbole, Foto-Vorschaubilder, `Strg + Mausrad` von 16 bis 256 px. Ein Klick auf den Spaltenkopf sortiert. |
 | **Sicher** | Entpackte Dateien behalten das Mark of the Web des Archivs; Programme und Skripte fragen vor dem Öffnen nach. Komplett offline. |
-| **Portabel, 4 Sprachen** | Eine exe für x64 oder ARM64, keine Installation, kein .NET. Türkçe, English, Deutsch, Español. |
+| **Portabel, 4 Sprachen** | Eine exe für x64 oder ARM64, keine Installation, kein .NET. Standardmäßig Englisch; Deutsch, Türkçe und Español in den *Einstellungen*. |
 
 ## Installation
 
@@ -49,13 +49,13 @@ so wie [Everything](https://www.voidtools.com/) Dateinamen auf der Festplatte du
 und trägt sie ins Startmenü und unter *Einstellungen › Apps* ein (dort auch deinstallieren). Keine Administratorrechte nötig.
 
 ```powershell
-irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1 | iex
 ```
 
 Optionen: `-Desktop` (Desktop-Verknüpfung), `-Uninstall`, `-Uninstall -RemoveData` (auch Einstellungen und Bibliothek löschen):
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/YOUR_GITHUB_USER/ArsivAra/main/install.ps1))) -Desktop
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/ekink07/ArchiveSearch/main/install.ps1))) -Desktop
 ```
 
 **winget**
@@ -64,7 +64,7 @@ Optionen: `-Desktop` (Desktop-Verknüpfung), `-Uninstall`, `-Uninstall -RemoveDa
 winget install VerloraStudios.ArsivAra
 ```
 
-**Manuell**: `ArsivAra.exe` (x64) oder `ArsivAra-arm64.exe` aus dem [neuesten Release](https://github.com/YOUR_GITHUB_USER/ArsivAra/releases/latest) laden und starten.
+**Manuell**: `ArsivAra.exe` (x64) oder `ArsivAra-arm64.exe` aus dem [neuesten Release](https://github.com/ekink07/ArchiveSearch/releases/latest) laden und starten.
 Mit einer leeren `portable.txt` neben der exe (oder auf einem USB-Stick) liegen Einstellungen und Bibliothek im Ordner `ArsivAra-veri` daneben.
 
 ## Bedienung
@@ -103,7 +103,7 @@ Die Schaltfläche **?** neben dem Suchfeld zeigt dieselbe Liste. Tasten: `Strg +
 Benötigt das [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) unter Windows (`winget install Microsoft.DotNet.SDK.10`).
 
 ```powershell
-git clone https://github.com/YOUR_GITHUB_USER/ArsivAra.git
+git clone https://github.com/ekink07/ArchiveSearch.git
 cd ArsivAra
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # Unit-Tests mit echten Beispielarchiven
@@ -111,7 +111,7 @@ pwsh tests/ui/ui-smoke.ps1                   # UI-Smoke-Test über UI Automation
 ```
 
 Ein Tag wie `v1.1.0` startet Tests, baut x64- und ARM64-exe, signiert sie bei vorhandenen Secrets,
-veröffentlicht ein GitHub-Release und aktualisiert winget. Anleitung für Veröffentlichung, winget und Codesignatur (Türkisch): [packaging/README.md](packaging/README.md).
+veröffentlicht ein GitHub-Release und aktualisiert winget. Anleitung für Veröffentlichung, winget und Codesignatur (Englisch): [packaging/README.md](packaging/README.md).
 
 ## Einschränkungen
 

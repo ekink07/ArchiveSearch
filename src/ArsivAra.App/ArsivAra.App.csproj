@@ -12,7 +12,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>ArsivAra</AssemblyName>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <!-- Sürüm, ürün adı ve yapımcı bilgisi: ../../Directory.Build.props -->
+    <!-- Version, product name and creator information: ../../Directory.Build.props -->
     <Title>Arşiv Ara</Title>
     <AssemblyTitle>Arşiv Ara</AssemblyTitle>
     <Description>ZIP, RAR, 7z, TAR ve ISO arşivlerinin içinde, açmadan anında arama.</Description>
@@ -20,9 +20,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Pencere ve görev çubuğu ikonu için (exe ikonu ApplicationIcon'dan gelir) -->
+    <!-- For the window and taskbar icon (the exe icon comes from ApplicationIcon) -->
     <Resource Include="Assets\app.ico" />
-    <!-- Boş ekran ve Hakkında penceresindeki logo. İkisi de tools/make_icon.ps1 ile docs/images/logo-arsiv.svg'den üretilir. -->
+    <!-- Logo for the empty screen and the About window. Both are generated from docs/images/logo-arsiv.svg by tools/make_icon.ps1. -->
     <Resource Include="Assets\logo.png" />
   </ItemGroup>
 

@@ -9,7 +9,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- Komut satırı exe'si de logoyla görünsün -->
+    <!-- Give the command-line exe the logo too -->
     <ApplicationIcon>..\ArsivAra.App\Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 

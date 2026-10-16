@@ -4,16 +4,16 @@ using System.Text.RegularExpressions;
 
 namespace ArsivAra.Core;
 
-/// <summary>Sorgudaki hatalı değer türü (arayüz kendi dilinde gösterir).</summary>
+/// <summary>Kind of invalid value in the query (the UI shows it in its own language).</summary>
 public enum QueryErrorKind { None, Size, Date, Regex }
 
-/// <summary>Sorgu düğümünün baktığı girdi: katlanmış (küçük harf, aksansız) UTF-8 yol ve dizindeki sırası.</summary>
+/// <summary>The entry a query node looks at: its folded (lowercase, accent-free) UTF-8 path and its position in the index.</summary>
 internal readonly ref struct EntryView(SearchIndex index, int entry, ReadOnlySpan<byte> path)
 {
     public readonly SearchIndex Index = index;
     public readonly int Entry = entry;
 
-    /// <summary>Katlanmış yol; klasörlerde sondaki '/' dahil.</summary>
+    /// <summary>Folded path; includes the trailing '/' for folders.</summary>
     public readonly ReadOnlySpan<byte> Path = path;
 
     public ReadOnlySpan<byte> Name => SearchIndex.NameOf(Path);
@@ -56,21 +56,21 @@ sealed class NotNode(QueryNode item) : QueryNode
     public override bool Match(in EntryView v) => !item.Match(v);
 }
 
-/// <summary>Kelime ya da "tam ifade": yolda (ad: ile sadece adda) geçmeli.</summary>
+/// <summary>Word or "exact phrase": must appear in the path (with ad:, in the name only).</summary>
 sealed class TermNode(byte[] term, bool nameOnly) : QueryNode
 {
     public readonly byte[] Term = term;
     public override bool Match(in EntryView v) => (nameOnly ? v.Name : v.Path).IndexOf(Term) >= 0;
 }
 
-/// <summary>ad:="Tam Ad.pdf": adın tamamı eşit olmalı (büyük/küçük harf ve aksan duyarsız).</summary>
+/// <summary>ad:="Exact Name.pdf": the whole name must be equal (case- and accent-insensitive).</summary>
 sealed class ExactNameNode(byte[] name) : QueryNode
 {
     public readonly byte[] Name = name;
     public override bool Match(in EntryView v) => v.Name.SequenceEqual(Name);
 }
 
-/// <summary>Joker: * (herhangi bir dizi) ve ? (tek karakter); adın (desende '/' varsa yolun) tamamına uymalı.</summary>
+/// <summary>Wildcard: * (any sequence) and ? (single character); must match the whole name (the whole path if the pattern contains '/').</summary>
 sealed class GlobNode(byte[] pattern, bool fullPath) : QueryNode
 {
     public readonly byte[] Pattern = pattern;
@@ -120,7 +120,7 @@ sealed class RegexNode(Regex regex) : QueryNode
     }
 }
 
-/// <summary>arsiv:yedek — arşivin yolunda geçmeli. İzin verilen arşivler aramadan önce dizine göre hesaplanır.</summary>
+/// <summary>arsiv:backup — must appear in the archive's path. The allowed archives are computed from the index before the search.</summary>
 sealed class ArchiveNode(string foldedTerm) : QueryNode
 {
     public readonly string Term = foldedTerm;
@@ -128,7 +128,7 @@ sealed class ArchiveNode(string foldedTerm) : QueryNode
     public override bool Match(in EntryView v) => Allowed[v.Index.ArchiveIndexOf(v.Entry)];
 }
 
-/// <summary>kopya: — aynı ad ve boyutta (CRC biliniyorsa aynı CRC'de) başka bir dosya da var.</summary>
+/// <summary>kopya: — another file with the same name and size (and the same CRC, if known) exists.</summary>
 sealed class DupNode : QueryNode
 {
     public override bool Match(in EntryView v) => v.Index.IsDuplicate(v.Entry);
@@ -138,7 +138,7 @@ internal sealed class ParsedQuery
 {
     public required QueryNode Root { get; init; }
 
-    /// <summary>Tampon bununla taranır (en uzun zorunlu kelime); null ise her girdiye bakılır.</summary>
+    /// <summary>The buffer is scanned for this (the longest required word); if null, every entry is checked.</summary>
     public byte[]? ScanTerm { get; init; }
 
     public List<string> ContentTerms { get; init; } = [];
@@ -148,18 +148,18 @@ internal sealed class ParsedQuery
 }
 
 /// <summary>
-/// Arama sorgusu ayrıştırıcısı. Sözdizimi (Everything'e benzer; Türkçe ve İngilizce anahtar adları):
+/// Search query parser. Syntax (similar to Everything; Turkish and English key names):
 /// <code>
-///   kelime1 kelime2        VE: hepsi yolda geçmeli
-///   a|b  ya da  a | b      VEYA (boşluktan önce bağlanır: "x a|b" = x VE (a VEYA b))
-///   !kelime                DEĞİL
-///   "tam ifade"            boşluklu ifade olduğu gibi
-///   *.pdf  rapor?.docx     joker: adın tamamına uymalı (desende '/' varsa yolun)
-///   ext:pdf;docx           uzantı                     arsiv:yedek     arşivin yolunda geçmeli
-///   klasor: / dosya:       sadece klasörler/dosyalar   ad:rapor        sadece adda   ad:="Tam Ad.pdf"
-///   boyut:>10mb  boyut:1mb..1gb  boyut:10mb (en az)    tarih:2024  tarih:>=2024-06-01  tarih:2023..2024  tarih:bugun
-///   regex:^fatura_\d+      düzenli ifade (yolda)       kopya:          aynı ad ve boyutta başka dosya var
-///   icerik:"metin"         dosyaların içinde (metin, Office belgeleri; yavaş, sonradan uygulanır)
+///   word1 word2            AND: all must appear in the path
+///   a|b  or  a | b         OR (binds tighter than the space: "x a|b" = x AND (a OR b))
+///   !word                  NOT
+///   "exact phrase"         phrase with spaces, taken as is
+///   *.pdf  report?.docx    wildcard: must match the whole name (the path if the pattern contains '/')
+///   ext:pdf;docx           extension                   arsiv:backup    must appear in the archive's path
+///   klasor: / dosya:       folders/files only          ad:report       name only   ad:="Exact Name.pdf"
+///   boyut:>10mb  boyut:1mb..1gb  boyut:10mb (at least)  tarih:2024  tarih:>=2024-06-01  tarih:2023..2024  tarih:bugun
+///   regex:^invoice_\d+     regular expression on path  kopya:          another file with the same name and size exists
+///   icerik:"text"          inside files (text, Office documents; slow, applied afterwards)
 /// </code>
 /// </summary>
 internal static class QueryParser
@@ -193,7 +193,7 @@ internal static class QueryParser
                 joinNext = groups.Count > 0;
                 continue;
             }
-            // Düzenli ifadede '|' ifadenin parçasıdır.
+            // In a regular expression, '|' is part of the expression.
             var alternatives = IsRegexToken(token) ? [token] : SplitOutsideQuotes(token, '|');
             bool leadingPipe = alternatives.Count > 1 && alternatives[0].Length == 0;
             bool trailingPipe = alternatives.Count > 1 && alternatives[^1].Length == 0;
@@ -213,7 +213,7 @@ internal static class QueryParser
         if (ctx.Error != QueryErrorKind.None)
             return new ParsedQuery { Root = AllNode.Instance, Error = ctx.Error, ErrorDetail = ctx.ErrorDetail };
 
-        // VE'nin elemanları: tek seçenekli gruplar düzleştirilir (klasor:x gibi iç VE'ler dahil).
+        // Elements of the AND: single-alternative groups are flattened (including inner ANDs such as klasor:x).
         var items = new List<QueryNode>();
         foreach (var g in groups)
         {
@@ -237,7 +237,7 @@ internal static class QueryParser
         };
     }
 
-    /// <summary>VE'nin zorunlu elemanlarından en uzun düz metin: tampon onunla taranır, diğer koşullar sadece adaylarda denenir.</summary>
+    /// <summary>The longest plain text among the AND's required elements: the buffer is scanned for it, and the other conditions are tried only on candidates.</summary>
     static byte[]? PickScanTerm(List<QueryNode> items)
     {
         byte[]? best = null;
@@ -364,7 +364,7 @@ internal static class QueryParser
         return t.StartsWith("regex:", StringComparison.OrdinalIgnoreCase) || t.StartsWith("rx:", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Boşluklarla ayırır; tırnak içindeki boşluklar ayırmaz (tırnaklar parçada kalır).</summary>
+    /// <summary>Splits on whitespace; whitespace inside quotes does not split (the quotes stay in the token).</summary>
     internal static List<string> Tokenize(string q)
     {
         var tokens = new List<string>();
@@ -417,7 +417,7 @@ internal static class QueryParser
 
     static string Unquote(string s) => s.Replace("\"", "");
 
-    // ---- Boyut: >10mb, <=1,5gb, 1mb..1gb, =0, 10mb (en az) ----
+    // ---- Size: >10mb, <=1,5gb, 1mb..1gb, =0, 10mb (at least) ----
 
     internal static bool TryParseSize(string v, out long min, out long max)
     {
@@ -483,7 +483,7 @@ internal static class QueryParser
         return true;
     }
 
-    // ---- Tarih: 2024, 2024-06, 2024-06-15, 15.06.2024, bugun, buay..., >=, <, a..b ----
+    // ---- Date: 2024, 2024-06, 2024-06-15, 15.06.2024, bugun, buay..., >=, <, a..b ----
 
     internal static bool TryParseDate(string v, DateTime now, out long minUtc, out long maxUtc)
     {
@@ -531,7 +531,7 @@ internal static class QueryParser
     static readonly Regex My = new(@"^(\d{1,2})[-./](\d{4})$", RegexOptions.CultureInvariant);
     static readonly Regex Y = new(@"^(\d{4})$", RegexOptions.CultureInvariant);
 
-    /// <summary>Yerel saatle dönem: [start, end).</summary>
+    /// <summary>Period in local time: [start, end).</summary>
     static bool TryPeriod(string s, DateTime now, out DateTime start, out DateTime end)
     {
         var today = now.Date;
@@ -558,7 +558,7 @@ internal static class QueryParser
             else if ((m = Y.Match(s)).Success) { start = new DateTime(Int(m, 1), 1, 1); end = start.AddYears(1); return true; }
             else return false;
         }
-        catch (ArgumentOutOfRangeException) { return false; } // 2024-13-45 gibi
+        catch (ArgumentOutOfRangeException) { return false; } // e.g. 2024-13-45
         end = start.AddDays(1);
         return true;
     }

@@ -23,12 +23,15 @@
 - Single instance: opening another archive passes it to the running window.
 - ARM64 build; the installer picks the right one and registers the app under *Settings › Apps* with an uninstaller.
 - Unit tests (xUnit, real archives made by WinRAR, 7-Zip and IMAPI2), a UI smoke test through UI Automation, and CI on every push.
-- Release workflow: x64 and ARM64, optional code signing (Azure Trusted Signing) and winget updates. `tools/set-github-user.ps1` fills in the GitHub placeholders.
+- Release workflow: x64 and ARM64, optional code signing (Azure Trusted Signing) and winget updates. `tools/set-github-user.ps1` points all links to a GitHub owner and repository.
 - Website: search syntax and license sections, social preview card, live demo with the new syntax.
 - New logo (`docs/images/logo-arsiv.svg`) for the app icon, window, empty screen, website and README; "Created By MaledictusMaggot®" in the app, site and README.
 
 ### Changed
 
+- English is the default language of the app, the installer, the command-line tool and the website. Türkçe, Deutsch and
+  Español stay available under *Settings › Language*, where *System language* follows the Windows display language.
+  Source code comments and the documentation are in English.
 - Moved to .NET 10 (LTS). Building needs the .NET 10 SDK (selected by `global.json`); the portable exe includes the runtime.
 - Release workflow: code signing with an SSL.com eSigner (cloud OV) certificate in addition to Azure Artifact Signing;
   SHA256 files are computed after signing. Publishing, winget and signing guide in `packaging/README.md`.

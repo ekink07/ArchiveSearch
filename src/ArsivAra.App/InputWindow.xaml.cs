@@ -2,7 +2,7 @@ using System.Windows;
 
 namespace ArsivAra.App;
 
-/// <summary>Tek satırlık metin girişi (ör. kaydedilen aramanın adı).</summary>
+/// <summary>Single-line text input (e.g. the name of a saved search).</summary>
 public partial class InputWindow : Window
 {
     public string Value => Input.Text.Trim();

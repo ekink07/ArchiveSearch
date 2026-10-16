@@ -7,9 +7,9 @@ using ArsivAra.Core;
 namespace ArsivAra.App;
 
 /// <summary>
-/// Hızlı disk taraması: MFT'yi okumak yönetici izni ister. Tüm programı yönetici olarak çalıştırmak Explorer'dan
-/// sürükle-bırakı engellediği için (Windows UIPI) sadece bulma işi kısa ömürlü, yönetici izinli bir yardımcı süreçte yapılır:
-/// <c>ArsivAra.exe --mft-bul istek.json sonuc.json</c>. Arşivleri okumak normal süreçte kalır.
+/// Fast disk scan: reading the MFT requires administrator rights. Running the whole program as administrator blocks
+/// drag and drop from Explorer (Windows UIPI), so only the discovery step runs in a short-lived, elevated helper process:
+/// <c>ArsivAra.exe --mft-bul istek.json sonuc.json</c>. Reading the archives stays in the normal process.
 /// </summary>
 static class MftHelper
 {
@@ -18,25 +18,25 @@ static class MftHelper
     public sealed record Request(List<string> Roots, List<string> Excludes);
     public sealed record Response(List<string> Archives, List<string> NotScanned);
 
-    /// <summary>Yardımcı süreç: kökleri MFT ile tarar, bulunan arşiv yollarını yazar.</summary>
+    /// <summary>Helper process: scans the roots via the MFT and writes out the archive paths it finds.</summary>
     public static int Run(string requestFile, string responseFile)
     {
         try
         {
             var request = JsonSerializer.Deserialize<Request>(File.ReadAllText(requestFile))
-                          ?? throw new InvalidDataException("İstek okunamadı");
+                          ?? throw new InvalidDataException("Could not read the request");
             var (archives, notScanned) = Scanner.DiscoverMft(request.Roots, request.Excludes);
             File.WriteAllText(responseFile, JsonSerializer.Serialize(new Response(archives, notScanned)));
             return 0;
         }
         catch (Exception ex)
         {
-            Log.Error("MFT yardımcısı", ex);
+            Log.Error("MFT helper", ex);
             return 1;
         }
     }
 
-    /// <summary>Normal süreçten: yardımcıyı yönetici olarak başlatır ve bitmesini bekler. İzin verilmezse null.</summary>
+    /// <summary>From the normal process: starts the helper as administrator and waits for it to finish. Null if permission is denied.</summary>
     public static async Task<Response?> RunElevatedAsync(IReadOnlyList<string> roots, IReadOnlyCollection<string> excludes, CancellationToken ct)
     {
         string dir = Path.Combine(Path.GetTempPath(), "ArsivAra-mft-" + Guid.NewGuid().ToString("N"));
@@ -57,7 +57,7 @@ static class MftHelper
                 ? JsonSerializer.Deserialize<Response>(await File.ReadAllTextAsync(response, ct))
                 : null;
         }
-        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) { return null; } // kullanıcı izin vermedi
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) { return null; } // the user declined elevation
         finally
         {
             try { Directory.Delete(dir, recursive: true); } catch (Exception) { }

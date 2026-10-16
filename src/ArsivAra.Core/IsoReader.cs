@@ -4,10 +4,10 @@ using System.Text;
 namespace ArsivAra.Core;
 
 /// <summary>
-/// ISO disk görüntülerinin dosya listesini okur ve tek tek dosyalarını açar:
-/// UDF (Windows kurulum ISO'ları), ISO 9660 + Joliet (Unicode adlar) ve Rock Ridge (Linux ISO'larındaki uzun adlar).
-/// Dosya verisi görüntüde bitişik bloklar hâlinde durur; bir dosyayı açmak o blokları okumaktır, açma (decompress) yoktur.
-/// Biçimler: ECMA-119 (ISO 9660), Joliet belirtimi, IEEE P1282 (Rock Ridge), ECMA-167 / OSTA UDF 1.02–2.60.
+/// Reads the file list of ISO disc images and opens their individual files:
+/// UDF (Windows installation ISOs), ISO 9660 + Joliet (Unicode names) and Rock Ridge (long names in Linux ISOs).
+/// File data is stored in contiguous blocks in the image; opening a file means reading those blocks, there is no decompression.
+/// Formats: ECMA-119 (ISO 9660), the Joliet specification, IEEE P1282 (Rock Ridge), ECMA-167 / OSTA UDF 1.02–2.60.
 /// </summary>
 public static class IsoReader
 {
@@ -15,7 +15,7 @@ public static class IsoReader
     const int MaxDepth = 64;
     const int MaxEntries = 2_000_000;
 
-    /// <summary>Görüntüdeki bir dosya ya da klasör.</summary>
+    /// <summary>A file or folder in the image.</summary>
     public sealed class IsoFile
     {
         public required string Path { get; init; }
@@ -23,14 +23,14 @@ public static class IsoReader
         public long MtimeUtcTicks { get; init; }
         public bool IsDirectory { get; init; }
 
-        /// <summary>Verinin görüntüdeki parçaları (bayt konumu, uzunluk). Konum &lt; 0: sıfırlarla dolu bölge.</summary>
+        /// <summary>The data's extents in the image (byte offset, length). Offset &lt; 0: a zero-filled region.</summary>
         public List<(long Offset, long Length)> Extents { get; init; } = [];
 
-        /// <summary>UDF'de dosya kaydının içine gömülü küçük dosyaların verisi.</summary>
+        /// <summary>In UDF, the data of small files embedded in the file entry.</summary>
         public byte[]? Inline { get; init; }
     }
 
-    /// <summary>Görüntüdeki tüm dosya ve klasörler. UDF varsa o, yoksa Joliet, o da yoksa ISO 9660 (+ Rock Ridge) okunur.</summary>
+    /// <summary>All files and folders in the image. Reads UDF if present, otherwise Joliet, otherwise ISO 9660 (+ Rock Ridge).</summary>
     public static List<IsoFile> List(Stream image)
     {
         if (HasUdf(image))
@@ -40,20 +40,20 @@ public static class IsoReader
                 var udf = new UdfVolume(image).List();
                 if (udf.Count > 0) return udf;
             }
-            catch (InvalidDataException) { /* bozuk ya da desteklenmeyen UDF: ISO 9660 kısmına düş */ }
+            catch (InvalidDataException) { /* corrupt or unsupported UDF: fall back to the ISO 9660 part */ }
         }
         return Iso9660.List(image);
     }
 
-    /// <summary>Dosyanın içeriğini okuyan akış (görüntü akışı açık kaldığı sürece geçerli).</summary>
+    /// <summary>A stream that reads the file's contents (valid as long as the image stream stays open).</summary>
     public static Stream Open(Stream image, IsoFile file) =>
         file.Inline != null ? new MemoryStream(file.Inline, writable: false) : new ExtentStream(image, file.Extents, file.Size);
 
-    // ---- Ortak yardımcılar ----
+    // ---- Shared helpers ----
 
     static byte[] ReadAt(Stream s, long offset, int count)
     {
-        if (offset < 0 || count < 0 || offset + count > s.Length) throw new InvalidDataException("ISO görüntüsünün dışına okuma");
+        if (offset < 0 || count < 0 || offset + count > s.Length) throw new InvalidDataException("Read outside the ISO image");
         var buf = new byte[count];
         s.Position = offset;
         s.ReadExactly(buf);
@@ -64,7 +64,7 @@ public static class IsoReader
     static uint LE32(ReadOnlySpan<byte> d, int o) => BinaryPrimitives.ReadUInt32LittleEndian(d[o..]);
     static ulong LE64(ReadOnlySpan<byte> d, int o) => BinaryPrimitives.ReadUInt64LittleEndian(d[o..]);
 
-    /// <summary>Birim tanıma dizisinde (16. sektörden itibaren) "NSR02"/"NSR03" varsa görüntüde UDF vardır.</summary>
+    /// <summary>The image contains UDF if "NSR02"/"NSR03" appears in the volume recognition sequence (from sector 16 on).</summary>
     static bool HasUdf(Stream s)
     {
         for (int i = 16; i < 16 + 64; i++)
@@ -102,11 +102,11 @@ public static class IsoReader
                 if (off + Sector > s.Length) break;
                 var d = ReadAt(s, off, Sector);
                 if (Encoding.ASCII.GetString(d, 1, 5) != "CD001") break;
-                if (d[0] == 255) break; // sonlandırıcı
+                if (d[0] == 255) break; // terminator
                 if (d[0] == 1) primary ??= d;
                 else if (d[0] == 2 && d[88] == 0x25 && d[89] == 0x2F && d[90] is 0x40 or 0x43 or 0x45) joliet ??= d;
             }
-            var vd = joliet ?? primary ?? throw new InvalidDataException("ISO 9660 birim tanımlayıcısı bulunamadı");
+            var vd = joliet ?? primary ?? throw new InvalidDataException("ISO 9660 volume descriptor not found");
             int blockSize = LE16(vd, 128);
             if (blockSize is not (512 or 1024 or 2048)) blockSize = Sector;
 
@@ -120,17 +120,17 @@ public static class IsoReader
             List<IsoFile> result, HashSet<uint> visited, int depth)
         {
             if (depth > MaxDepth || !visited.Add(lba) || result.Count > MaxEntries) return;
-            if (size > 64u << 20) throw new InvalidDataException("ISO klasör kaydı çok büyük");
+            if (size > 64u << 20) throw new InvalidDataException("ISO directory record too large");
             var data = ReadAt(s, (long)lba * blockSize, (int)size);
 
-            IsoFile? pending = null; // çok parçalı (multi-extent) dosya: aynı adla ardışık kayıtlar
+            IsoFile? pending = null; // multi-extent file: consecutive records with the same name
             int pos = 0;
             while (pos < data.Length)
             {
                 int len = data[pos];
                 if (len == 0)
                 {
-                    // Kayıtlar sektör sınırını aşmaz; sektörün kalanı boştur.
+                    // Records do not cross a sector boundary; the rest of the sector is empty.
                     pos = (pos / Sector + 1) * Sector;
                     continue;
                 }
@@ -141,7 +141,7 @@ public static class IsoReader
                 int nameLen = r[32];
                 if (33 + nameLen > len) continue;
                 var nameBytes = r.Slice(33, nameLen);
-                if (nameLen == 1 && nameBytes[0] <= 1) continue; // "." ve ".."
+                if (nameLen == 1 && nameBytes[0] <= 1) continue; // "." and ".."
 
                 string name;
                 int suStart = 33 + nameLen + ((nameLen & 1) == 0 ? 1 : 0);
@@ -177,7 +177,7 @@ public static class IsoReader
             if (pending != null) result.Add(pending);
         }
 
-        /// <summary>Rock Ridge "NM" (alternatif ad) kayıtlarını birleştirir; yoksa null.</summary>
+        /// <summary>Joins Rock Ridge "NM" (alternate name) records; null if there are none.</summary>
         static string? RockRidgeName(ReadOnlySpan<byte> rec, int p)
         {
             StringBuilder? sb = null;
@@ -190,7 +190,7 @@ public static class IsoReader
                     byte fl = rec[p + 4];
                     if ((fl & 0x06) == 0) (sb ??= new StringBuilder()).Append(Encoding.UTF8.GetString(rec.Slice(p + 5, l - 5)));
                 }
-                else if (rec[p] == 'S' && rec[p + 1] == 'T') break; // SUSP sonlandırıcı
+                else if (rec[p] == 'S' && rec[p + 1] == 'T') break; // SUSP terminator
                 p += l;
             }
             return sb?.ToString();
@@ -208,8 +208,8 @@ public static class IsoReader
     {
         sealed class PartitionMap
         {
-            public uint Start;                                 // fiziksel bölümün başlangıç sektörü
-            public List<(uint Lbn, long Length)>? Metadata;    // UDF 2.50 metadata bölümü: metadata dosyasının parçaları
+            public uint Start;                                 // start sector of the physical partition
+            public List<(uint Lbn, long Length)>? Metadata;    // UDF 2.50 metadata partition: extents of the metadata file
         }
 
         readonly List<PartitionMap> _maps = [];
@@ -218,7 +218,7 @@ public static class IsoReader
 
         public List<IsoFile> List()
         {
-            var avdp = FindAnchor() ?? throw new InvalidDataException("UDF bağlantı tanımlayıcısı (AVDP) yok");
+            var avdp = FindAnchor() ?? throw new InvalidDataException("UDF anchor descriptor (AVDP) missing");
             uint vdsLen = LE32(avdp, 16), vdsLoc = LE32(avdp, 20);
 
             var partitionStarts = new Dictionary<ushort, uint>();
@@ -229,15 +229,15 @@ public static class IsoReader
                 if (!ValidTag(d, out ushort tag)) continue;
                 if (tag == 5) partitionStarts.TryAdd(LE16(d, 22), LE32(d, 188));
                 else if (tag == 6) lvd ??= d;
-                else if (tag == 8) break; // sonlandırıcı
+                else if (tag == 8) break; // terminator
             }
-            if (lvd == null || partitionStarts.Count == 0) throw new InvalidDataException("UDF birim tanımlayıcıları eksik");
-            if (LE32(lvd, 212) != Sector) throw new InvalidDataException("UDF blok boyutu desteklenmiyor");
+            if (lvd == null || partitionStarts.Count == 0) throw new InvalidDataException("UDF volume descriptors missing");
+            if (LE32(lvd, 212) != Sector) throw new InvalidDataException("UDF block size not supported");
 
             ParseMaps(lvd, partitionStarts);
 
             var fsd = ReadBlock(new LbAddr(LE32(lvd, 252), LE16(lvd, 256)));
-            if (!ValidTag(fsd, out ushort fsdTag) || fsdTag != 256) throw new InvalidDataException("UDF dosya kümesi tanımlayıcısı yok");
+            if (!ValidTag(fsd, out ushort fsdTag) || fsdTag != 256) throw new InvalidDataException("UDF file set descriptor missing");
             var root = new LbAddr(LE32(fsd, 404), LE16(fsd, 408));
             ReadDirectory(root, "", 0);
             return _result;
@@ -255,7 +255,7 @@ public static class IsoReader
             return null;
         }
 
-        /// <summary>ECMA-167 tanımlayıcı etiketi: 16 bayt, 4. bayt diğer 15 baytın toplamı (mod 256).</summary>
+        /// <summary>ECMA-167 descriptor tag: 16 bytes; byte 4 is the sum of the other 15 bytes (mod 256).</summary>
         static bool ValidTag(byte[] d, out ushort tag, int o = 0)
         {
             tag = 0;
@@ -283,7 +283,7 @@ public static class IsoReader
                     var map = new PartitionMap { Start = Start(starts, LE16(lvd, p + 38)) };
                     if (kind.StartsWith("*UDF Metadata Partition", StringComparison.Ordinal))
                     {
-                        // Metadata dosyası fiziksel bölümdeki bir dosya kaydıdır; parçaları metadata bloklarını eşler.
+                        // The metadata file is a file entry in the physical partition; its extents map the metadata blocks.
                         var tmp = new PartitionMap { Start = map.Start };
                         _maps.Add(tmp);
                         var fe = ReadFileEntry(new LbAddr(LE32(lvd, p + 40), (ushort)(_maps.Count - 1)));
@@ -291,20 +291,20 @@ public static class IsoReader
                         map.Metadata = fe.Extents.Select(e => ((uint)((e.Offset / Sector) - map.Start), e.Length)).ToList();
                     }
                     else if (kind.StartsWith("*UDF Virtual Partition", StringComparison.Ordinal))
-                        throw new InvalidDataException("UDF sanal bölümü (VAT) desteklenmiyor");
-                    _maps.Add(map); // sparable bölümler fiziksel gibi okunur
+                        throw new InvalidDataException("UDF virtual partition (VAT) not supported");
+                    _maps.Add(map); // sparable partitions are read like physical ones
                 }
                 p += len;
             }
-            if (_maps.Count == 0) throw new InvalidDataException("UDF bölüm haritası yok");
+            if (_maps.Count == 0) throw new InvalidDataException("UDF partition map missing");
         }
 
         static uint Start(Dictionary<ushort, uint> starts, ushort number) =>
-            starts.TryGetValue(number, out var st) ? st : throw new InvalidDataException("UDF bölümü bulunamadı");
+            starts.TryGetValue(number, out var st) ? st : throw new InvalidDataException("UDF partition not found");
 
         long Physical(LbAddr a)
         {
-            if (a.Partition >= _maps.Count) throw new InvalidDataException("UDF bölüm başvurusu geçersiz");
+            if (a.Partition >= _maps.Count) throw new InvalidDataException("Invalid UDF partition reference");
             var m = _maps[a.Partition];
             if (m.Metadata == null) return ((long)m.Start + a.Lbn) * Sector;
             long off = (long)a.Lbn * Sector;
@@ -313,7 +313,7 @@ public static class IsoReader
                 if (off < length) return ((long)m.Start + lbn) * Sector + off;
                 off -= length;
             }
-            throw new InvalidDataException("UDF metadata bloğu eşlenemedi");
+            throw new InvalidDataException("Could not map UDF metadata block");
         }
 
         byte[] ReadBlock(LbAddr a) => ReadAt(s, Physical(a), Sector);
@@ -323,7 +323,7 @@ public static class IsoReader
         Fe ReadFileEntry(LbAddr a)
         {
             var d = ReadBlock(a);
-            if (!ValidTag(d, out ushort tag) || (tag != 261 && tag != 266)) throw new InvalidDataException("UDF dosya kaydı bekleniyordu");
+            if (!ValidTag(d, out ushort tag) || (tag != 261 && tag != 266)) throw new InvalidDataException("UDF file entry expected");
             bool efe = tag == 266;
             int fileType = d[27];
             int adType = LE16(d, 34) & 7;
@@ -331,7 +331,7 @@ public static class IsoReader
             long mtime = UdfTime(d.AsSpan(efe ? 92 : 84, 12));
             int lEa = (int)LE32(d, efe ? 208 : 168), lAd = (int)LE32(d, efe ? 212 : 172);
             int adStart = (efe ? 216 : 176) + lEa;
-            if (lEa < 0 || lAd < 0 || adStart + lAd > d.Length) throw new InvalidDataException("UDF dosya kaydı bozuk");
+            if (lEa < 0 || lAd < 0 || adStart + lAd > d.Length) throw new InvalidDataException("UDF file entry corrupt");
 
             if (adType == 3) return new Fe(fileType, size, mtime, [], d.AsSpan(adStart, (int)Math.Min(lAd, size)).ToArray());
 
@@ -342,8 +342,8 @@ public static class IsoReader
 
         void ParseAllocation(byte[] d, int start, int length, int adType, ushort partition, List<(long, long)> extents, int depth)
         {
-            if (depth > 32) throw new InvalidDataException("UDF ayırma zinciri çok uzun");
-            int step = adType switch { 0 => 8, 1 => 16, _ => throw new InvalidDataException("UDF ayırma türü desteklenmiyor") };
+            if (depth > 32) throw new InvalidDataException("UDF allocation chain too long");
+            int step = adType switch { 0 => 8, 1 => 16, _ => throw new InvalidDataException("UDF allocation type not supported") };
             for (int p = start; p + step <= start + length; p += step)
             {
                 uint raw = LE32(d, p);
@@ -353,13 +353,13 @@ public static class IsoReader
                 var at = adType == 0 ? new LbAddr(LE32(d, p + 4), partition) : new LbAddr(LE32(d, p + 4), LE16(d, p + 8));
                 if (kind == 3)
                 {
-                    // Ayırma tanımlayıcılarının devamı başka bir blokta (Allocation Extent Descriptor, etiket 258).
+                    // The allocation descriptors continue in another block (Allocation Extent Descriptor, tag 258).
                     var aed = ReadBlock(at);
-                    if (!ValidTag(aed, out ushort t) || t != 258) throw new InvalidDataException("UDF ayırma devamı bozuk");
+                    if (!ValidTag(aed, out ushort t) || t != 258) throw new InvalidDataException("UDF allocation continuation corrupt");
                     ParseAllocation(aed, 24, (int)Math.Min(LE32(aed, 20), Sector - 24), adType, partition, extents, depth + 1);
                     return;
                 }
-                extents.Add((kind == 0 ? Physical(at) : -1, len)); // 1/2: yazılmamış ya da ayrılmamış, sıfır okunur
+                extents.Add((kind == 0 ? Physical(at) : -1, len)); // 1/2: not recorded or not allocated, reads as zeros
             }
         }
 
@@ -367,7 +367,7 @@ public static class IsoReader
         {
             if (depth > MaxDepth || !_visited.Add((icb.Lbn, icb.Partition)) || _result.Count > MaxEntries) return;
             var fe = ReadFileEntry(icb);
-            if (fe.Size > 64L << 20) throw new InvalidDataException("UDF klasörü çok büyük");
+            if (fe.Size > 64L << 20) throw new InvalidDataException("UDF directory too large");
             byte[] data = fe.Inline ?? ReadExtents(fe.Extents, fe.Size);
 
             int p = 0;
@@ -389,7 +389,7 @@ public static class IsoReader
 
                 Fe info;
                 try { info = ReadFileEntry(child); }
-                catch (InvalidDataException) { continue; } // tek bozuk kayıt tüm listeyi düşürmesin
+                catch (InvalidDataException) { continue; } // one corrupt entry should not bring down the whole listing
 
                 if ((characteristics & 0x02) != 0 || info.FileType == 4)
                 {
@@ -415,7 +415,7 @@ public static class IsoReader
             return ms.ToArray();
         }
 
-        /// <summary>OSTA sıkıştırılmış Unicode: ilk bayt 8 → 8 bitlik karakterler, 16 → UTF-16 BE.</summary>
+        /// <summary>OSTA compressed Unicode: first byte 8 → 8-bit characters, 16 → UTF-16 BE.</summary>
         static string Osta(ReadOnlySpan<byte> b)
         {
             if (b.Length < 1) return "";
@@ -432,12 +432,12 @@ public static class IsoReader
             int typeTz = LE16(t, 0);
             int tz = typeTz & 0xFFF;
             if (tz > 2047) tz -= 4096;
-            if (tz == -2047) tz = 0; // belirtilmemiş
+            if (tz == -2047) tz = 0; // unspecified
             return ValidTicks((short)LE16(t, 2), t[4], t[5], t[6], t[7], t[8], tz);
         }
     }
 
-    /// <summary>Görüntüdeki parçaları tek bir dosya gibi okutan akış.</summary>
+    /// <summary>A stream that reads the extents in the image as if they were a single file.</summary>
     sealed class ExtentStream(Stream image, List<(long Offset, long Length)> extents, long size) : Stream
     {
         long _pos;

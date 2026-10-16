@@ -1,14 +1,14 @@
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Açmak, önizlemek ve sürüklemek için çıkarılan geçici dosyalar (%TEMP%\ArsivAra). Program açılışında eskileri silinir;
-/// başka bir programda hâlâ açık olan dosyalar atlanır.
+/// Temporary files extracted for opening, previewing and dragging (%TEMP%\ArsivAra). Old ones are deleted at program startup;
+/// files still open in another program are skipped.
 /// </summary>
 public static class TempFiles
 {
     public static string Root => AppPaths.ExtractDir;
 
-    /// <summary>Geçici klasörün toplam boyutu (bayt).</summary>
+    /// <summary>Total size of the temporary folder (bytes).</summary>
     public static long Size(string? root = null)
     {
         root ??= Root;
@@ -22,8 +22,8 @@ public static class TempFiles
     }
 
     /// <summary>
-    /// <paramref name="olderThan"/> süresinden beri kullanılmamış klasör ve dosyaları siler (sıfır: hepsi).
-    /// Silinen bayt sayısını döndürür.
+    /// Deletes folders and files not used for at least <paramref name="olderThan"/> (zero: all of them).
+    /// Returns the number of bytes deleted.
     /// </summary>
     public static long Clean(TimeSpan olderThan, string? root = null)
     {
@@ -41,11 +41,11 @@ public static class TempFiles
             foreach (var file in new DirectoryInfo(root).EnumerateFiles())
                 if (file.LastWriteTimeUtc <= limit) freed += TryDelete(file);
         }
-        catch (Exception ex) { Log.Warn("Geçici dosyalar temizlenemedi", ex); }
+        catch (Exception ex) { Log.Warn("Could not clean up temporary files", ex); }
         return freed;
     }
 
-    /// <summary>Klasördeki en son değişiklik: klasörün kendisi ya da içindeki en yeni dosya.</summary>
+    /// <summary>The latest change in the folder: the folder itself or the newest file inside it.</summary>
     static DateTime LastUse(DirectoryInfo dir)
     {
         var last = dir.LastWriteTimeUtc;
@@ -67,7 +67,7 @@ public static class TempFiles
             foreach (var f in dir.EnumerateFiles()) freed += TryDelete(f);
             if (!dir.EnumerateFileSystemInfos().Any()) dir.Delete();
         }
-        catch (Exception) { /* açık dosya ya da erişim yok: kalsın */ }
+        catch (Exception) { /* file is open or access denied: leave it */ }
         return freed;
     }
 

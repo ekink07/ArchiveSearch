@@ -13,7 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <!-- SharpCompress paket olarak değil, kaynak kod olarak projede: src/ThirdParty/README.md -->
+    <ProjectReference Include="..\ThirdParty\SharpCompress\SharpCompress.csproj" />
   </ItemGroup>
 
   <ItemGroup>

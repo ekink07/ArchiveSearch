@@ -129,7 +129,7 @@ verbreiten, unterlizenzieren und verkaufen ist erlaubt, solange Urheberrechtshin
 | **Hersteller** | Verlora Studios |
 | **Erstellt von** | MaledictusMaggot |
 | **Urheberrecht** | © 2026 MaledictusMaggot |
-| **Drittanbieter** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) (MIT) und in der portablen Version die .NET-Laufzeit (MIT). Siehe [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
+| **Drittanbieter** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) 0.50.4 als Quellcode in [src/ThirdParty](src/ThirdParty/README.md) (MIT; enthält Code unter UnRAR-, Ms-PL-, Apache-2.0-, BSD- und zlib-Lizenz) und in der portablen Version die .NET-Laufzeit (MIT). Alle Texte: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
 
 Im Programm: **Über Arşiv Ara › Lizenztext** (`F1`); `ArsivAra.Cli lisans` gibt den Text in der Konsole aus.
 

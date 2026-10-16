@@ -146,6 +146,7 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `src/ArsivAra.Core` | Archive readers (ZIP, RAR5 Quick Open, ISO/UDF, SharpCompress), index file, query language, search engine |
 | `src/ArsivAra.App` | WPF user interface with the Windows 11 (Fluent) theme |
 | `src/ArsivAra.Cli` | Command-line tool: `index`, `search`, `extract`, `watch`, `lisans` |
+| `src/ThirdParty` | SharpCompress 0.50.4 source code (RAR, 7z, TAR, XZ, BZip2 and Zstandard decoders), see [its README](src/ThirdParty/README.md) |
 | `tests/` | xUnit tests with sample archives made by WinRAR, 7-Zip and IMAPI2; UI smoke test |
 | `tools/` | Icons, screenshots and social card, test archives, `set-github-user.ps1` for the `YOUR_GITHUB_USER` placeholders |
 
@@ -170,7 +171,7 @@ sublicense and sell it, as long as the copyright notice and the license text are
 | **Publisher** | Verlora Studios |
 | **Creator** | MaledictusMaggot |
 | **Copyright** | © 2026 MaledictusMaggot |
-| **Third-party components** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) (MIT) and, in the portable build, the .NET runtime (MIT). See [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
+| **Third-party components** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) 0.50.4, included as source code in [src/ThirdParty](src/ThirdParty/README.md) (MIT; it contains code under the UnRAR, Ms-PL, Apache 2.0, BSD and zlib licenses), and, in the portable build, the .NET runtime (MIT). All texts: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
 
 The app shows the same information under **About › License text** (`F1`), and `ArsivAra.Cli lisans` prints it in the console.
 

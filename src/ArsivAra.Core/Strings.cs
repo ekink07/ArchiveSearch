@@ -234,7 +234,7 @@ public static class Strings
             "Free to use, modify and distribute; just keep the copyright and license notice. The program is provided as is, without warranty.",
             "Kostenlos nutzbar, veränderbar und weitergebbar; Urheber- und Lizenzhinweis müssen erhalten bleiben. Das Programm wird ohne Gewährleistung bereitgestellt.",
             "Se puede usar, modificar y distribuir gratis conservando el aviso de copyright y la licencia. El programa se ofrece tal cual, sin garantía."),
-        ("LicenseThirdParty", "Üçüncü taraf: SharpCompress (MIT), .NET (MIT)", "Third party: SharpCompress (MIT), .NET (MIT)", "Drittanbieter: SharpCompress (MIT), .NET (MIT)", "Terceros: SharpCompress (MIT), .NET (MIT)"),
+        ("LicenseThirdParty", "Üçüncü taraf: SharpCompress ve içerdiği bileşenler, .NET", "Third party: SharpCompress and the components it includes, .NET", "Drittanbieter: SharpCompress mit den enthaltenen Komponenten, .NET", "Terceros: SharpCompress y los componentes que incluye, .NET"),
         ("LicenseShow", "Lisans metni", "License text", "Lizenztext", "Texto de la licencia"),
         ("LicenseProgram", "Program lisansı", "Program license", "Programmlizenz", "Licencia del programa"),
         ("LicenseComponents", "Üçüncü taraf bileşenler", "Third-party components", "Komponenten von Drittanbietern", "Componentes de terceros"),

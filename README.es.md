@@ -129,7 +129,7 @@ distribuirlo, sublicenciarlo y venderlo, siempre que se conserven el aviso de co
 | **Fabricante** | Verlora Studios |
 | **Creado por** | MaledictusMaggot |
 | **Copyright** | © 2026 MaledictusMaggot |
-| **Terceros** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) (MIT) y, en la versión portátil, el runtime de .NET (MIT). Ver [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
+| **Terceros** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) 0.50.4 como código fuente en [src/ThirdParty](src/ThirdParty/README.md) (MIT; incluye código con licencias UnRAR, Ms-PL, Apache 2.0, BSD y zlib) y, en la versión portátil, el runtime de .NET (MIT). Todos los textos: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
 
 En el programa: **Acerca de › Texto de la licencia** (`F1`); `ArsivAra.Cli lisans` lo muestra en la consola.
 

@@ -29,6 +29,8 @@
 
 ### Changed
 
+- SharpCompress 0.50.4 is built from source in `src/ThirdParty/SharpCompress` instead of being referenced as a NuGet package.
+  `THIRD-PARTY-NOTICES.txt` lists every component it contains with its license (UnRAR, Ms-PL, Apache 2.0, BSD, zlib, MIT).
 - winget package identifier is now `VerloraStudios.ArsivAra`.
 - The index file format is version 2; older libraries are converted automatically and a backup of the old file is kept.
   An unreadable library is set aside instead of being overwritten.

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- SharpCompress 0.50.4, kaynak kod olarak (github.com/adamhathcock/sharpcompress, commit c083c6e).
+       Kaynağı, yerel değişiklikleri ve güncelleme yolu: ../README.md. Lisanslar: ../../../THIRD-PARTY-NOTICES.txt -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>SharpCompress</AssemblyName>
+    <RootNamespace>SharpCompress</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Dışarıdan alınmış kod: uyarılar ve kod çözümleyicileri bu projede kapalı -->
+    <WarningLevel>0</WarningLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <!-- Kökteki Directory.Build.props'un Arşiv Ara bilgileri bu derlemeye yazılmasın -->
+    <Version>0.50.4</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>SharpCompress</Product>
+    <AssemblyTitle>SharpCompress - Pure C# Decompression/Compression</AssemblyTitle>
+    <Authors>Adam Hathcock</Authors>
+    <Company>Adam Hathcock</Company>
+    <Copyright>Copyright (c) 2014 Adam Hathcock</Copyright>
+    <Description>SharpCompress 0.50.4 source, compiled as part of Arşiv Ara. MIT License; see THIRD-PARTY-NOTICES.txt.</Description>
+  </PropertyGroup>
+
+</Project>

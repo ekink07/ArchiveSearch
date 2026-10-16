@@ -146,6 +146,7 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `src/ArsivAra.Core` | Arşiv okuyucular (ZIP, RAR5 Quick Open, ISO/UDF, SharpCompress), indeks dosyası, sorgu dili, arama motoru |
 | `src/ArsivAra.App` | Windows 11 (Fluent) temalı WPF arayüzü |
 | `src/ArsivAra.Cli` | Komut satırı aracı: `index`, `search`, `extract`, `watch`, `lisans` |
+| `src/ThirdParty` | SharpCompress 0.50.4 kaynak kodu (RAR, 7z, TAR, XZ, BZip2 ve Zstandard çözücüleri), bkz. [README](src/ThirdParty/README.md) |
 | `tests/` | WinRAR, 7-Zip ve IMAPI2 ile üretilmiş örnek arşivlerle xUnit testleri; arayüz duman testi |
 | `tools/` | Simgeler, ekran görüntüleri ve paylaşım kartı, test arşivleri, `YOUR_GITHUB_USER` yer tutucuları için `set-github-user.ps1` |
 
@@ -170,7 +171,7 @@ kopyalayabilir, değiştirebilir, birleştirebilir, yayımlayabilir, dağıtabil
 | **Üretici** | Verlora Studios |
 | **Yapımcı** | MaledictusMaggot |
 | **Telif** | © 2026 MaledictusMaggot |
-| **Üçüncü taraf bileşenler** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) (MIT) ve taşınabilir sürümde .NET çalışma zamanı (MIT). Bkz. [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
+| **Üçüncü taraf bileşenler** | [SharpCompress](https://github.com/adamhathcock/sharpcompress) 0.50.4, kaynak kod olarak [src/ThirdParty](src/ThirdParty/README.md) içinde (MIT; içinde unRAR, Ms-PL, Apache 2.0, BSD ve zlib lisanslı kodlar var) ve taşınabilir sürümde .NET çalışma zamanı (MIT). Tüm metinler: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). |
 
 Aynı bilgiler programda **Hakkında › Lisans metni** (`F1`) altındadır; `ArsivAra.Cli lisans` komutu da konsola yazar.
 

@@ -16,7 +16,7 @@ public sealed class TileVM(int position, ArchiveRecord archive, ArchiveEntry ent
     public double IconSize { get; } = iconSize;
     public double TileWidth => Math.Max(IconSize + 28, 96);
     public double TileHeight => IconSize + 58;
-    public string ToolTipText => $"{Entry.Path}\n{System.IO.Path.GetFileName(Archive.Path)}";
+    public string ToolTipText => $"{Entry.Path}\n{Archive.DisplayName}";
 
     ImageSource? _thumbnail;
     public ImageSource? Thumbnail

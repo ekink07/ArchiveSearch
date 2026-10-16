@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Globalization;
 using ArsivAra.Core;
 
 namespace ArsivAra.App;
@@ -13,11 +12,11 @@ public sealed class ResultRow(ResultList owner, int position, ArchiveRecord arch
 
     public string Name => Entry.Name;
     public string Folder => Entry.Folder;
-    public string Archive => ArchiveRecord.Path;
-    public string ArchiveName => System.IO.Path.GetFileName(ArchiveRecord.Path);
-    public string SizeText => Entry.IsDirectory ? "" : FormatSize(Entry.Size);
-    public string ModifiedText => Entry.MtimeUtcTicks <= 0 ? ""
-        : new DateTime(Entry.MtimeUtcTicks, DateTimeKind.Utc).ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+    /// <summary>Arşivin tam yolu (iç içe arşivde "D:\yedek.zip › Yedekler/eski.zip"); ipucunda görünür.</summary>
+    public string Archive => ArchiveRecord.DisplayPath;
+    public string ArchiveName => ArchiveRecord.DisplayName;
+    public string SizeText => Entry.IsDirectory ? "" : Format.Size(Entry.Size);
+    public string ModifiedText => Format.Date(Entry.MtimeUtcTicks);
     /// <summary>Windows dosya türü simgesi (klasör, Word, Fotoğraflar…), liste yakınlaştırmasına uygun boyutta.</summary>
     public System.Windows.Media.ImageSource? Icon => IconProvider.For(Entry.Name, Entry.IsDirectory, Owner.IconSize);
     public double IconSize => Owner.IconSize;
@@ -25,14 +24,6 @@ public sealed class ResultRow(ResultList owner, int position, ArchiveRecord arch
     // Sanal listede aynı satır her istekte yeniden oluşturulur; seçim takibi için konuma göre eşitlik.
     public override bool Equals(object? obj) => obj is ResultRow r && r.Owner == Owner && r.Position == Position;
     public override int GetHashCode() => HashCode.Combine(Owner, Position);
-
-    static string FormatSize(long b) => b switch
-    {
-        < 1024 => $"{b} B",
-        < 1024 * 1024 => $"{b / 1024.0:N0} KB",
-        < 1024L * 1024 * 1024 => $"{b / (1024.0 * 1024):N1} MB",
-        _ => $"{b / (1024.0 * 1024 * 1024):N2} GB",
-    };
 }
 
 /// <summary>

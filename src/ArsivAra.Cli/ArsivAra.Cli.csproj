@@ -9,6 +9,8 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Komut satırı exe'si de logoyla görünsün -->
+    <ApplicationIcon>..\ArsivAra.App\Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

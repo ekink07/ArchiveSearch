@@ -31,7 +31,7 @@ public sealed class ThumbnailService : IDisposable
 
     public void Request(TileVM tile)
     {
-        var key = (tile.Archive.Path, tile.Entry.Path);
+        var key = (tile.Archive.DisplayPath, tile.Entry.Path);
         lock (_lock)
         {
             if (_cache.TryGetValue(key, out var cached))
@@ -65,12 +65,12 @@ public sealed class ThumbnailService : IDisposable
                 _pending.RemoveFirst();
             }
 
-            var key = (tile.Archive.Path, tile.Entry.Path);
+            var key = (tile.Archive.DisplayPath, tile.Entry.Path);
             ImageSource? img;
             lock (_lock) _cache.TryGetValue(key, out img);
             if (img == null)
             {
-                img = Decode(_reader.Read(tile.Archive.Path, tile.Entry.Path, MaxImageBytes));
+                img = Decode(_reader.Read(tile.Archive, tile.Entry.Path, MaxImageBytes));
                 lock (_lock)
                 {
                     _cache[key] = img;

@@ -1,0 +1,24 @@
+using System.Windows;
+
+namespace ArsivAra.App;
+
+/// <summary>Şifreli arşiv için parola sorar; "hatırla" seçilirse parola DPAPI ile saklanır (bkz. PasswordStore).</summary>
+public partial class PasswordWindow : Window
+{
+    public string Password => Box.Password;
+    public bool Remember => RememberBox.IsChecked == true;
+
+    /// <param name="wrong">Önceki deneme başarısız oldu: uyarı gösterilir.</param>
+    public PasswordWindow(string archiveName, bool wrong)
+    {
+        InitializeComponent();
+        PromptText.Text = Loc.F("PasswordPrompt", archiveName);
+        WrongText.Visibility = wrong ? Visibility.Visible : Visibility.Collapsed;
+        Loaded += (_, _) => Box.Focus();
+    }
+
+    void Ok_Click(object sender, RoutedEventArgs e)
+    {
+        if (Box.Password.Length > 0) DialogResult = true;
+    }
+}

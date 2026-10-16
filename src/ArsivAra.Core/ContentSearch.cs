@@ -31,6 +31,9 @@ public static class ContentSearch
     public const long MaxOfficeBytes = 32L << 20;
     public const int MaxCandidates = 20_000;
 
+    public static bool IsTextName(string name) => TextExtensions.Contains(Path.GetExtension(name));
+    public static bool IsOfficeName(string name) => OfficeExtensions.Contains(Path.GetExtension(name));
+
     /// <summary>Bu dosyanın içine bakılabilir mi (tür ve boyut).</summary>
     public static bool CanSearch(in ArchiveEntry e)
     {
@@ -171,7 +174,7 @@ public static class ContentSearch
     }
 
     /// <summary>BOM varsa ona göre; yoksa geçerli UTF-8 ise UTF-8, değilse sistemin eski kod sayfası (Türkçede Windows-1254).</summary>
-    internal static string DecodeText(byte[] b)
+    public static string DecodeText(byte[] b)
     {
         if (b.Length >= 3 && b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) return Encoding.UTF8.GetString(b, 3, b.Length - 3);
         if (b.Length >= 2 && b[0] == 0xFF && b[1] == 0xFE) return Encoding.Unicode.GetString(b, 2, b.Length - 2);

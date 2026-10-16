@@ -9,6 +9,6 @@ public partial class AboutWindow : Window
     public AboutWindow()
     {
         InitializeComponent();
-        VersionText.Text = $"Sürüm {AppInfo.Version}";
+        VersionText.Text = Loc.F("AboutVersion", AppInfo.Version);
     }
 }

@@ -3,24 +3,46 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:l="clr-namespace:ArsivAra.App"
         Title="{l:T AboutTitle}" Icon="Assets/app.ico"
-        Width="420" SizeToContent="Height" ResizeMode="NoResize" ShowInTaskbar="False"
+        Width="440" SizeToContent="Height" ResizeMode="NoResize" ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13">
-    <StackPanel Margin="32,28,32,24">
-        <Image Source="Assets/logo.png" Width="112" Height="112" RenderOptions.BitmapScalingMode="HighQuality"
+    <StackPanel Margin="32,26,32,24">
+        <Image Source="Assets/logo.png" Width="104" Height="104" RenderOptions.BitmapScalingMode="HighQuality"
                AutomationProperties.Name="Arşiv Ara" />
-        <TextBlock Text="Arşiv Ara" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0" />
+        <TextBlock Text="Arşiv Ara" FontSize="26" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0" />
         <TextBlock x:Name="VersionText" HorizontalAlignment="Center" Opacity="0.7" Margin="0,2,0,0"
                    AutomationProperties.AutomationId="AboutVersion" />
         <TextBlock Text="{l:T AboutTagline}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,14,0,0" />
-        <TextBlock HorizontalAlignment="Center" FontSize="15" Margin="0,20,0,0" AutomationProperties.AutomationId="AboutCredit">
+        <TextBlock HorizontalAlignment="Center" FontSize="15" Margin="0,18,0,0" AutomationProperties.AutomationId="AboutCredit">
             <Run Text="Created By" /> <Run Text="MaledictusMaggot®" FontWeight="Bold" />
         </TextBlock>
-        <TextBlock Text="{l:T AboutLicense}" HorizontalAlignment="Center"
-                   FontSize="12" Opacity="0.6" Margin="0,6,0,0" />
+        <TextBlock x:Name="ManufacturerText" HorizontalAlignment="Center" Opacity="0.75" Margin="0,4,0,0"
+                   AutomationProperties.AutomationId="AboutManufacturer" />
+
+        <!-- Lisans: türü, kısa özeti, telif sahibi, üçüncü taraf bileşenler; tam metin ayrı pencerede -->
+        <Border Margin="0,20,0,0" Padding="16,14" CornerRadius="8" BorderThickness="1"
+                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+            <StackPanel>
+                <DockPanel LastChildFill="False">
+                    <TextBlock Text="&#xEB95;" FontFamily="{StaticResource IconFont}" FontSize="16" VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <TextBlock Text="{l:T License}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock x:Name="LicenseKindText" DockPanel.Dock="Right" Opacity="0.7" VerticalAlignment="Center"
+                               AutomationProperties.AutomationId="AboutLicenseKind" />
+                </DockPanel>
+                <TextBlock Text="{l:T LicenseSummary}" TextWrapping="Wrap" FontSize="12" Opacity="0.85" Margin="0,8,0,0" />
+                <TextBlock x:Name="CopyrightText" FontSize="12" Opacity="0.7" Margin="0,8,0,0"
+                           AutomationProperties.AutomationId="AboutCopyright" />
+                <TextBlock Text="{l:T LicenseThirdParty}" FontSize="12" Opacity="0.7" Margin="0,2,0,0" />
+                <Button Content="{l:T LicenseShow}" Click="License_Click" HorizontalAlignment="Left" Padding="12,4" Margin="0,12,0,0"
+                        AutomationProperties.AutomationId="AboutLicenseButton" />
+            </StackPanel>
+        </Border>
+
         <!-- IsCancel: tıklayınca ya da Esc ile kapanır -->
         <Button Content="{l:T OK}" IsDefault="True" IsCancel="True" MinWidth="104" Padding="16,6"
-                HorizontalAlignment="Center" Margin="0,22,0,0" Style="{DynamicResource AccentButtonStyle}"
+                HorizontalAlignment="Center" Margin="0,20,0,0" Style="{DynamicResource AccentButtonStyle}"
                 AutomationProperties.AutomationId="AboutOk" />
     </StackPanel>
 </Window>

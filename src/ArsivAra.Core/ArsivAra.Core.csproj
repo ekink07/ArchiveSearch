@@ -16,6 +16,12 @@
     <PackageReference Include="SharpCompress" Version="0.50.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Lisans penceresi ve "ArsivAra.Cli lisans" bu metinleri gösterir; ayrı dosya dağıtmaya gerek kalmaz -->
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE" Link="LICENSE" />
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.txt" LogicalName="THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" />
+  </ItemGroup>
+
 </Project>
 
 

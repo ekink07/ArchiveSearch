@@ -53,7 +53,7 @@
             <Grid Margin="0,12,0,0">
                 <Image x:Name="ImageView" Stretch="Uniform" StretchDirection="DownOnly" VerticalAlignment="Top"
                        RenderOptions.BitmapScalingMode="HighQuality" Visibility="Collapsed" />
-                <TextBox x:Name="TextView" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                <TextBox x:Name="TextView" IsReadOnly="True" TextWrapping="Wrap" TextAlignment="Left" VerticalScrollBarVisibility="Auto"
                          FontFamily="Cascadia Mono, Consolas" FontSize="12" Visibility="Collapsed"
                          AutomationProperties.AutomationId="PreviewText" />
                 <StackPanel x:Name="MessagePanel" VerticalAlignment="Center" HorizontalAlignment="Center">

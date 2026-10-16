@@ -136,6 +136,7 @@ public partial class MainWindow : Window
     void OnLanguageChanged()
     {
         Language = XmlLanguage.GetLanguage(Loc.I.Culture.IetfLanguageTag);
+        _notice = null; // eski dilde yazılmış geçici bildirim kalmasın
         UpdateSortHeaders();
         Refresh();
         UpdatePreview();
@@ -606,9 +607,15 @@ public partial class MainWindow : Window
     void UpdateViewButtons()
     {
         var accent = TryFindResource("AccentButtonStyle") as Style;
-        ListViewButton.Style = IsGrid ? null : accent;
-        GridViewButton.Style = IsGrid ? accent : null;
-        PreviewButton.Style = _settings.ShowPreview ? accent : null;
+        // Style = null temanın (Fluent) örtük stilini de kapatıp klasik gri düğmeye düşürür; ClearValue örtük stile döner.
+        void Mark(Button button, bool active)
+        {
+            if (active && accent != null) button.Style = accent;
+            else button.ClearValue(StyleProperty);
+        }
+        Mark(ListViewButton, !IsGrid);
+        Mark(GridViewButton, IsGrid);
+        Mark(PreviewButton, _settings.ShowPreview);
     }
 
     void TogglePreview_Click(object sender, RoutedEventArgs e) => SetPreviewVisible(!_settings.ShowPreview, save: true);
@@ -1198,7 +1205,9 @@ public partial class MainWindow : Window
         Refresh();
     }
 
-    void About_Click(object sender, RoutedEventArgs e) => new AboutWindow { Owner = this }.ShowDialog();
+    // Bağlantıya (Hyperlink) UI Automation ile tıklama eşzamanlıdır: pencere bir sonraki turda açılır ki
+    // ekran okuyucu, iletişim kutusu kapanana kadar beklemesin.
+    void About_Click(object sender, RoutedEventArgs e) => Dispatcher.InvokeAsync(() => new AboutWindow { Owner = this }.ShowDialog());
 
     void Brand_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => About_Click(sender, e);
 }

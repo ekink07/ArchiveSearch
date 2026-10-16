@@ -23,7 +23,7 @@ public class StringsTests
     [Fact]
     public void Every_key_used_by_the_app_exists()
     {
-        string app = Path.Combine(RepoRoot(), "src", "ArsivAra.App");
+        string app = Path.Combine(Fx.RepoRoot, "src", "ArsivAra.App");
         var used = new HashSet<string>();
         foreach (var file in Directory.EnumerateFiles(app, "*", SearchOption.AllDirectories))
         {
@@ -51,12 +51,5 @@ public class StringsTests
         Assert.Equal("Örnek", Strings.Get("tr", "Örnek")); // bilinmeyen anahtar kendisi döner
         Assert.Equal("Arama dili", Strings.Get("tr", "SearchHelp"));
         Assert.Equal("Suchsyntax", Strings.Get("de", "SearchHelp"));
-    }
-
-    static string RepoRoot()
-    {
-        var d = new DirectoryInfo(AppContext.BaseDirectory);
-        while (d != null && !File.Exists(Path.Combine(d.FullName, "ArsivAra.sln"))) d = d.Parent;
-        return d?.FullName ?? throw new DirectoryNotFoundException("ArsivAra.sln bulunamadı");
     }
 }

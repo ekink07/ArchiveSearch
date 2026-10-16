@@ -5,7 +5,7 @@ using ArsivAra.Core;
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
 
-string banner = $"{AppInfo.Name} CLI {AppInfo.Version} · {AppInfo.Credit}";
+string banner = $"{AppInfo.Name} CLI {AppInfo.Version} · {AppInfo.Company} · {AppInfo.Credit}";
 string indexPath = AppPaths.IndexFile;
 bool useMft = true;
 string? password = null;
@@ -51,6 +51,13 @@ switch (command)
     case "--version":
     case "version":
         Console.WriteLine(banner);
+        Console.WriteLine($"{AppInfo.Copyright} · {AppInfo.LicenseName} lisansı (ayrıntı: ArsivAra.Cli lisans)");
+        break;
+    case "lisans":
+    case "license":
+        Console.WriteLine(AppInfo.LicenseText);
+        Console.WriteLine();
+        Console.WriteLine(AppInfo.ThirdPartyNotices);
         break;
     case "":
     case "interactive":
@@ -65,7 +72,8 @@ switch (command)
               ArsivAra.Cli                                 Etkileşimli arama
               ArsivAra.Cli watch <klasör> [saniye]         USN Journal'dan canlı arşiv değişikliklerini yazdır (yönetici)
               ArsivAra.Cli extract <arşiv> <iç yol>        Tek dosyayı geçici klasöre çıkar ve yolunu yazdır
-              ArsivAra.Cli --version                       Sürüm ve yapımcı bilgisi
+              ArsivAra.Cli --version                       Sürüm, üretici ve yapımcı bilgisi
+              ArsivAra.Cli lisans                          Lisans metni ve üçüncü taraf bileşenler
               --no-mft                                     MFT yerine klasör gezerek tara (karşılaştırma için)
               --index <dosya>                              İndeks dosyası (varsayılan: %LOCALAPPDATA%\ArsivAra\index.bin)
               --parola <parola>                            Şifreli arşivler için

@@ -12,6 +12,29 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,18,0,8" />
         </Style>
+        <!-- Klasör listeleri: sık satırlar, uzun yollar "…" ile kısalır (tam yol ipucunda) -->
+        <Style x:Key="PathList" TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+            <Setter Property="Height" Value="110" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#40808080" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" ToolTip="{Binding}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                        <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="Padding" Value="10,4" />
+                        <Setter Property="Margin" Value="2,1" />
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24,12,24,20">
@@ -31,7 +54,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="{l:T SetRoots}" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,4" />
-                    <ListBox x:Name="RootsList" Height="110" BorderThickness="1" BorderBrush="#40808080"
+                    <ListBox x:Name="RootsList" Style="{StaticResource PathList}"
                              AutomationProperties.AutomationId="RootsList" AutomationProperties.Name="{l:T SetRoots}" />
                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                         <Button Content="{l:T SetAdd}" Click="AddRoot_Click" MinWidth="80" />
@@ -40,7 +63,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="{l:T SetExcludes}" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,4" />
-                    <ListBox x:Name="ExcludesList" Height="110" BorderThickness="1" BorderBrush="#40808080"
+                    <ListBox x:Name="ExcludesList" Style="{StaticResource PathList}"
                              AutomationProperties.AutomationId="ExcludesList" AutomationProperties.Name="{l:T SetExcludes}" />
                     <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                         <Button Content="{l:T SetAdd}" Click="AddExclude_Click" MinWidth="80" />
@@ -70,9 +93,13 @@
             <TextBlock x:Name="DataDirText" TextWrapping="Wrap" Opacity="0.7" Margin="0,12,0,0" />
             <Button Content="{l:T SetOpenLogs}" Click="OpenLogs_Click" HorizontalAlignment="Left" Margin="0,6,0,0" />
 
-            <Button Content="{l:T Close}" Click="Close_Click" HorizontalAlignment="Right"
-                    MinWidth="110" Margin="0,22,0,0" Style="{DynamicResource AccentButtonStyle}"
-                    AutomationProperties.AutomationId="SettingsClose" />
+            <DockPanel Margin="0,22,0,0">
+                <Button Content="{l:T SetAboutLicense}" Click="About_Click" DockPanel.Dock="Left"
+                        AutomationProperties.AutomationId="SettingsAbout" />
+                <Button Content="{l:T Close}" Click="Close_Click" HorizontalAlignment="Right"
+                        MinWidth="110" Style="{DynamicResource AccentButtonStyle}"
+                        AutomationProperties.AutomationId="SettingsClose" />
+            </DockPanel>
         </StackPanel>
     </ScrollViewer>
 </Window>

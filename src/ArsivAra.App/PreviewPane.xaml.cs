@@ -39,7 +39,10 @@ public partial class PreviewPane : UserControl
     {
         _cts?.Cancel();
         _rec = null;
-        Header.Visibility = Visibility.Collapsed;
+        Header.Visibility = VersionsPanel.Visibility = Visibility.Collapsed;
+        ImageView.Visibility = TextView.Visibility = LoadAnywayButton.Visibility = Visibility.Collapsed;
+        ImageView.Source = null;
+        TextView.Text = "";
         ShowMessage(Loc.T("PreviewSelect"));
     }
 

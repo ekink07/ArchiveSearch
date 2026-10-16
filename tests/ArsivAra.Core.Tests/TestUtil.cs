@@ -18,6 +18,17 @@ static class Fx
     public static string Dir => Path.Combine(AppContext.BaseDirectory, "Fixtures");
     public static string File(string name) => Path.Combine(Dir, name);
 
+    /// <summary>Depo kökü (ArsivAra.sln'in bulunduğu klasör); kaynak dosyalarını denetleyen testler için.</summary>
+    public static string RepoRoot
+    {
+        get
+        {
+            var d = new DirectoryInfo(AppContext.BaseDirectory);
+            while (d != null && !System.IO.File.Exists(Path.Combine(d.FullName, "ArsivAra.sln"))) d = d.Parent;
+            return d?.FullName ?? throw new DirectoryNotFoundException("ArsivAra.sln bulunamadı");
+        }
+    }
+
     /// <summary>Kaynak ağaçtaki dosyalar (kule.png hariç; o System.Drawing ile üretildiği için sadece varlığına bakılır).</summary>
     public static readonly Dictionary<string, byte[]> Files = new()
     {

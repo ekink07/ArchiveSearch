@@ -218,12 +218,26 @@ public static class Strings
         ("SetDataDir", "Veri klasörü: {0}", "Data folder: {0}", "Datenordner: {0}", "Carpeta de datos: {0}"),
         ("SetPortable", "taşınabilir", "portable", "portabel", "portátil"),
         ("SetOpenLogs", "Günlük klasörünü aç", "Open log folder", "Protokollordner öffnen", "Abrir carpeta de registros"),
+        ("SetAboutLicense", "Hakkında ve lisans", "About and license", "Info und Lizenz", "Acerca de y licencia"),
 
         // ---- Hakkında ----
         ("AboutTitle", "Arşiv Ara hakkında", "About Arşiv Ara", "Über Arşiv Ara", "Acerca de Arşiv Ara"),
         ("AboutVersion", "Sürüm {0}", "Version {0}", "Version {0}", "Versión {0}"),
         ("AboutTagline", "ZIP, RAR, 7z, TAR ve ISO arşivlerinin içinde,\naçmadan anında arama.", "Search inside ZIP, RAR, 7z, TAR and ISO archives\ninstantly, without extracting them.", "Sofortige Suche in ZIP-, RAR-, 7z-, TAR- und ISO-Archiven,\nohne sie zu entpacken.", "Busca al instante dentro de archivos ZIP, RAR, 7z, TAR e ISO,\nsin descomprimirlos."),
-        ("AboutLicense", "MIT lisansı · SharpCompress (MIT) kullanır", "MIT license · uses SharpCompress (MIT)", "MIT-Lizenz · verwendet SharpCompress (MIT)", "Licencia MIT · usa SharpCompress (MIT)"),
+        ("AboutManufacturer", "Üretici: {0}", "Publisher: {0}", "Hersteller: {0}", "Fabricante: {0}"),
+
+        // ---- Lisans ----
+        ("License", "Lisans", "License", "Lizenz", "Licencia"),
+        ("LicenseTitle", "Arşiv Ara lisansı", "Arşiv Ara license", "Lizenz von Arşiv Ara", "Licencia de Arşiv Ara"),
+        ("LicenseKind", "{0} lisansı · açık kaynak", "{0} license · open source", "{0}-Lizenz · Open Source", "Licencia {0} · código abierto"),
+        ("LicenseSummary", "Ücretsiz kullanılabilir, değiştirilebilir ve dağıtılabilir; telif ve lisans notunun korunması yeterlidir. Program olduğu gibi, garantisiz sunulur.",
+            "Free to use, modify and distribute; just keep the copyright and license notice. The program is provided as is, without warranty.",
+            "Kostenlos nutzbar, veränderbar und weitergebbar; Urheber- und Lizenzhinweis müssen erhalten bleiben. Das Programm wird ohne Gewährleistung bereitgestellt.",
+            "Se puede usar, modificar y distribuir gratis conservando el aviso de copyright y la licencia. El programa se ofrece tal cual, sin garantía."),
+        ("LicenseThirdParty", "Üçüncü taraf: SharpCompress (MIT), .NET (MIT)", "Third party: SharpCompress (MIT), .NET (MIT)", "Drittanbieter: SharpCompress (MIT), .NET (MIT)", "Terceros: SharpCompress (MIT), .NET (MIT)"),
+        ("LicenseShow", "Lisans metni", "License text", "Lizenztext", "Texto de la licencia"),
+        ("LicenseProgram", "Program lisansı", "Program license", "Programmlizenz", "Licencia del programa"),
+        ("LicenseComponents", "Üçüncü taraf bileşenler", "Third-party components", "Komponenten von Drittanbietern", "Componentes de terceros"),
     ]);
 
     static IReadOnlyDictionary<string, (string, string, string, string)> Build((string Key, string Tr, string En, string De, string Es)[] rows)

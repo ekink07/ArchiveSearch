@@ -1,13 +1,13 @@
 <Project>
 
-  <!-- Tüm projeler (uygulama, çekirdek, komut satırı) için ortak ürün ve yapımcı bilgisi.
-       exe'nin Özellikler > Ayrıntılar sekmesinde görünür. Yayında sürüm, etiketten (-p:Version) gelir. -->
+  <!-- Tüm projeler (uygulama, çekirdek, komut satırı) için ortak ürün ve üretici bilgisi.
+       exe'nin Özellikler > Ayrıntılar sekmesinde ve Hakkında penceresinde görünür. Yayında sürüm, etiketten (-p:Version) gelir. -->
   <PropertyGroup>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Product>Arşiv Ara</Product>
     <Authors>MaledictusMaggot</Authors>
-    <Company>MaledictusMaggot</Company>
-    <Copyright>Copyright © 2026 MaledictusMaggot. MIT License.</Copyright>
+    <Company>Verlora Studios</Company>
+    <Copyright>Copyright © 2026 MaledictusMaggot</Copyright>
   </PropertyGroup>
 
 </Project>

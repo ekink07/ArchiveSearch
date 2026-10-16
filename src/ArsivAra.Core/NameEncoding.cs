@@ -35,6 +35,13 @@ public sealed class NameEncoding : Encoding
         catch { return new NameEncoding(GetEncoding(437)); }
     }
 
+    /// <summary>Belirli bir DOS kod sayfasıyla (ör. 857) çözücü; sistemin dilinden bağımsız.</summary>
+    public static NameEncoding ForCodePage(int codePage)
+    {
+        RegisterProvider(CodePagesEncodingProvider.Instance);
+        return new NameEncoding(GetEncoding(codePage));
+    }
+
     Encoding Pick(ReadOnlySpan<byte> bytes)
     {
         if (System.Text.Ascii.IsValid(bytes)) return StrictUtf8;

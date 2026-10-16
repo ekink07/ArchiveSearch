@@ -99,7 +99,9 @@ public static class Scanner
         foreach (var ex in excludes)
         {
             var e = ex.TrimEnd('\\');
-            if (e.Length > 0 && path.StartsWith(e + "\\", StringComparison.OrdinalIgnoreCase)) return true;
+            if (e.Length == 0) continue;
+            // Klasör (alt klasörleriyle) ya da listeden kaldırılmış tek bir arşiv dosyası.
+            if (path.StartsWith(e + "\\", StringComparison.OrdinalIgnoreCase) || path.Equals(e, StringComparison.OrdinalIgnoreCase)) return true;
         }
         return false;
     }
@@ -196,7 +198,9 @@ public static class Scanner
         Action<ScanProgress>? progress = null,
         CancellationToken ct = default,
         bool useMft = true,
-        Action<ArchiveRecord>? onRead = null)
+        Action<ArchiveRecord>? onRead = null,
+        ReadOptions? readOptions = null,
+        Func<string, string?>? passwordFor = null)
     {
         var total = Stopwatch.StartNew();
         var journals = new List<VolumeJournal>();
@@ -236,13 +240,65 @@ public static class Scanner
         }
         var discoveryTime = total.Elapsed;
 
+        var (archives, slow) = ReadAll(discovered.SelectMany(x => x), previous, progress, ct, onRead, readOptions, passwordFor);
+        return new ScanResult
+        {
+            Archives = archives,
+            Journals = journals,
+            WalkedRoots = walked,
+            DiscoveryTime = discoveryTime,
+            SlowArchives = slow,
+            TotalTime = total.Elapsed,
+        };
+    }
+
+    /// <summary>
+    /// Sadece MFT ile bulma (yönetici izniyle çalışan yardımcı süreç için): arşiv yolları ve MFT ile okunamayan kökler.
+    /// </summary>
+    public static (List<string> Archives, List<string> NotScanned) DiscoverMft(IEnumerable<string> roots,
+        IReadOnlyCollection<string> excludes, CancellationToken ct = default)
+    {
+        var found = new List<string>();
+        var notScanned = new List<string>();
+        var byVolume = roots.Where(Directory.Exists)
+            .Select(r => Path.GetFullPath(r))
+            .GroupBy(r => Path.GetPathRoot(r)!.ToUpperInvariant());
+        foreach (var group in byVolume)
+        {
+            var groupRoots = group.ToList();
+            bool anyReparse = groupRoots.Any(r => r.Length > 3 && (File.GetAttributes(r) & FileAttributes.ReparsePoint) != 0);
+            using var vol = anyReparse ? null : NtfsVolume.TryOpen(group.Key);
+            if (vol == null)
+            {
+                notScanned.AddRange(groupRoots);
+                continue;
+            }
+            try { found.AddRange(FindArchivesMft(vol, groupRoots, excludes, null, ct).Select(f => f.Path)); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception) { notScanned.AddRange(groupRoots); }
+        }
+        return (found, notScanned);
+    }
+
+    /// <summary>
+    /// Bulunan arşivleri okur. Her fiziksel disk kendi kuyruğundan okunur: HDD'de az okuyucu (kafa dosyalar arasında
+    /// gidip gelmesin), SSD'de çok okuyucu; diskler birbirini beklemez. Bulma (gezme) ile okuma da eşzamanlı ilerler.
+    /// </summary>
+    public static (List<ArchiveRecord> Archives, List<(string Path, double Seconds)> Slow) ReadAll(
+        IEnumerable<FoundArchive> discovered,
+        IReadOnlyDictionary<string, ArchiveRecord> previous,
+        Action<ScanProgress>? progress = null,
+        CancellationToken ct = default,
+        Action<ArchiveRecord>? onRead = null,
+        ReadOptions? readOptions = null,
+        Func<string, string?>? passwordFor = null)
+    {
         var results = new ConcurrentBag<ArchiveRecord>();
         var slow = new ConcurrentBag<(string, double)>();
         int found = 0, processed = 0, reused = 0, failed = 0;
         long lastReport = 0;
+        var baseOptions = readOptions ?? ReadOptions.Default;
 
-        // Her fiziksel disk kendi kuyruğundan okunur: HDD'de az okuyucu (kafa dosyalar arasında gidip gelmesin),
-        // SSD'de çok okuyucu; diskler birbirini beklemez. Bulma (gezme) ile okuma da eşzamanlı ilerler.
         var queues = new Dictionary<int, BlockingCollection<FoundArchive>>();
         var workers = new List<Task>();
         Exception? workerError = null;
@@ -269,7 +325,7 @@ public static class Scanner
 
         try
         {
-            foreach (var f in discovered.SelectMany(x => x))
+            foreach (var f in discovered)
             {
                 ct.ThrowIfCancellationRequested();
                 QueueFor(f.Path).Add(f, ct);
@@ -285,56 +341,43 @@ public static class Scanner
 
         void Process(FoundArchive f)
         {
+            if (f.Size < 0)
             {
-                if (f.Size < 0)
-                {
-                    var fi = new FileInfo(f.Path);
-                    if (!fi.Exists || (fi.Attributes & CloudOnly) != 0) return;
-                    f = new FoundArchive(f.Path, fi.Length, fi.LastWriteTimeUtc.Ticks);
-                }
-                Interlocked.Increment(ref found);
-                ArchiveRecord rec;
-                if (previous.TryGetValue(f.Path, out var old) && old.IsSameFile(f.Size, f.MtimeUtcTicks))
-                {
-                    rec = old;
-                    Interlocked.Increment(ref reused);
-                }
-                else
-                {
-                    long t0 = Stopwatch.GetTimestamp();
-                    rec = ArchiveReader.Read(f.Path, f.Size, f.MtimeUtcTicks);
-                    double secs = Stopwatch.GetElapsedTime(t0).TotalSeconds;
-                    if (secs > 2) slow.Add((f.Path, secs));
-                    if (rec.Error != null) Interlocked.Increment(ref failed);
-                    onRead?.Invoke(rec); // arayüz tarama bitmeden sonuç gösterebilsin
-                }
-                results.Add(rec);
-                int done = Interlocked.Increment(ref processed);
+                var fi = new FileInfo(f.Path);
+                if (!fi.Exists || (fi.Attributes & CloudOnly) != 0) return;
+                f = new FoundArchive(f.Path, fi.Length, fi.LastWriteTimeUtc.Ticks);
+            }
+            Interlocked.Increment(ref found);
+            ArchiveRecord rec;
+            if (previous.TryGetValue(f.Path, out var old) && old.IsSameFile(f.Size, f.MtimeUtcTicks) && !old.NeedsPassword)
+            {
+                rec = old;
+                Interlocked.Increment(ref reused);
+            }
+            else
+            {
+                long t0 = Stopwatch.GetTimestamp();
+                var options = passwordFor?.Invoke(f.Path) is { } pw ? baseOptions with { Password = pw } : baseOptions;
+                rec = ArchiveReader.Read(f.Path, f.Size, f.MtimeUtcTicks, options);
+                double secs = Stopwatch.GetElapsedTime(t0).TotalSeconds;
+                if (secs > 2) slow.Add((f.Path, secs));
+                if (rec.Error != null) Interlocked.Increment(ref failed);
+                onRead?.Invoke(rec); // arayüz tarama bitmeden sonuç gösterebilsin
+            }
+            results.Add(rec);
+            int done = Interlocked.Increment(ref processed);
 
-                long now = Environment.TickCount64;
-                if (progress != null && now - Interlocked.Read(ref lastReport) > 100)
-                {
-                    Interlocked.Exchange(ref lastReport, now);
-                    progress(new ScanProgress(found, done, reused, failed, f.Path));
-                }
+            long now = Environment.TickCount64;
+            if (progress != null && now - Interlocked.Read(ref lastReport) > 100)
+            {
+                Interlocked.Exchange(ref lastReport, now);
+                progress(new ScanProgress(found, done, reused, failed, f.Path));
             }
         }
 
         progress?.Invoke(new ScanProgress(found, processed, reused, failed, null));
         var list = results.ToList();
         list.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
-        return new ScanResult
-        {
-            Archives = list,
-            Journals = journals,
-            WalkedRoots = walked,
-            DiscoveryTime = discoveryTime,
-            SlowArchives = [.. slow.OrderByDescending(s => s.Item2)],
-            TotalTime = total.Elapsed,
-        };
+        return (list, [.. slow.OrderByDescending(s => s.Item2)]);
     }
 }
-
-
-
-

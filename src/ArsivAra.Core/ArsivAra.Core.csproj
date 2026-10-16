@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Testler iç (internal) ayrıştırıcıları ve yolları doğrudan dener -->
+    <InternalsVisibleTo Include="ArsivAra.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="SharpCompress" Version="0.50.4" />
   </ItemGroup>
 

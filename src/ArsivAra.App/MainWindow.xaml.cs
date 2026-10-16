@@ -540,7 +540,7 @@ public partial class MainWindow : Window
         ResultStatus.Text = $"Açılıyor: {entry.Name}…";
         try
         {
-            string file = await Task.Run(() => ArchiveReader.ExtractToTemp(archive.Path, entry.Path));
+            string file = await Task.Run(() => ArchiveExtractor.ExtractToTemp(archive, entry));
             Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
             ResultStatus.Text = $"Açıldı: {entry.Name}";
         }

@@ -1,17 +1,18 @@
 using System.IO.Compression;
 using SharpCompress.Archives;
-using SharpCompress.Readers;
 
 namespace ArsivAra.Core;
 
 /// <summary>
-/// Arşivden tek tek dosyaları belleğe okur (küçük resimler için). Büyük bir arşivi her dosyada yeniden açmamak için
+/// Arşivden tek tek dosyaları belleğe okur (küçük resim ve önizleme için). Büyük bir arşivi her dosyada yeniden açmamak için
 /// son kullanılan birkaç arşiv açık tutulur. Aynı arşive aynı anda tek iş parçacığı erişir.
-/// Solid RAR/7z'de bir dosyaya ulaşmak öncekilerin hepsini açmayı gerektirebilir; orada null döner.
+/// Solid RAR/7z ve sıkıştırılmış tar'da bir dosyaya ulaşmak öncekilerin hepsini açmayı gerektirebilir; orada null döner.
+/// İç içe arşivler küçükse (64 MB'a kadar) geçici klasöre çıkarılıp okunur.
 /// </summary>
 public sealed class ArchiveEntryReader : IDisposable
 {
     const int MaxOpen = 4;
+    const long MaxNestedMaterialize = 64L << 20;
 
     sealed class Handle : IDisposable
     {
@@ -20,19 +21,51 @@ public sealed class ArchiveEntryReader : IDisposable
         public Dictionary<string, ZipArchiveEntry>? ZipEntries { get; init; }
         public IArchive? Archive { get; init; }
         public Dictionary<string, IArchiveEntry>? Entries { get; init; }
+        public Stream? Image { get; init; }
+        public Dictionary<string, IsoReader.IsoFile>? IsoFiles { get; init; }
         public bool Solid { get; init; }
         public readonly object Gate = new();
-        public void Dispose() { Zip?.Dispose(); Archive?.Dispose(); }
+
+        public void Dispose()
+        {
+            Zip?.Dispose();
+            Archive?.Dispose();
+            Image?.Dispose();
+        }
     }
 
     readonly object _lock = new();
     readonly LinkedList<Handle> _open = new(); // en son kullanılan başta
 
-    /// <summary>Girdinin içeriği; çok büyükse, bulunamazsa ya da solid arşivdeyse null.</summary>
-    public byte[]? Read(string archivePath, string entryPath, long maxBytes)
+    /// <summary>Girdinin içeriği; çok büyükse, bulunamazsa, şifreliyse ya da solid arşivdeyse null.</summary>
+    public byte[]? Read(ArchiveRecord rec, string entryPath, long maxBytes)
+    {
+        string? password = PasswordStore.For(rec);
+        string path;
+        ArchiveFormat format;
+        if (rec.IsNested)
+        {
+            if (rec.FileSize > MaxNestedMaterialize) return null;
+            try { path = ArchiveExtractor.InnerArchiveFile(rec, password); }
+            catch (Exception) { return null; }
+            format = ArchiveReader.FormatOf(rec.InnerPath);
+        }
+        else
+        {
+            path = rec.Path;
+            format = ArchiveReader.FormatOf(path);
+        }
+        return Read(path, format, entryPath, maxBytes, password);
+    }
+
+    /// <summary>Diskteki bir arşivden okur (komut satırı ve testler için).</summary>
+    public byte[]? Read(string archivePath, string entryPath, long maxBytes) =>
+        Read(archivePath, ArchiveReader.FormatOf(archivePath), entryPath, maxBytes, null);
+
+    byte[]? Read(string path, ArchiveFormat format, string entryPath, long maxBytes, string? password)
     {
         Handle? h;
-        try { h = Get(archivePath); }
+        try { h = Get(path, format, password); }
         catch (Exception) { return null; }
         if (h == null || h.Solid) return null;
 
@@ -43,12 +76,17 @@ public sealed class ArchiveEntryReader : IDisposable
                 Stream src;
                 if (h.ZipEntries != null)
                 {
-                    if (!h.ZipEntries.TryGetValue(entryPath, out var ze) || ze.Length > maxBytes) return null;
+                    if (!h.ZipEntries.TryGetValue(entryPath, out var ze) || ze.Length > maxBytes || ze.IsEncrypted) return null;
                     src = ze.Open();
+                }
+                else if (h.IsoFiles != null)
+                {
+                    if (!h.IsoFiles.TryGetValue(entryPath, out var f) || f.Size > maxBytes) return null;
+                    src = IsoReader.Open(h.Image!, f);
                 }
                 else
                 {
-                    if (!h.Entries!.TryGetValue(entryPath, out var e) || e.Size > maxBytes || e.IsEncrypted) return null;
+                    if (!h.Entries!.TryGetValue(entryPath, out var e) || e.Size > maxBytes || (e.IsEncrypted && password == null)) return null;
                     src = e.OpenEntryStream();
                 }
                 using (src)
@@ -62,7 +100,7 @@ public sealed class ArchiveEntryReader : IDisposable
         }
     }
 
-    Handle? Get(string path)
+    Handle? Get(string path, ArchiveFormat format, string? password)
     {
         lock (_lock)
         {
@@ -75,7 +113,7 @@ public sealed class ArchiveEntryReader : IDisposable
             }
         }
 
-        var h = Open(path);
+        var h = Open(path, format, password);
         lock (_lock)
         {
             _open.AddFirst(h);
@@ -89,14 +127,21 @@ public sealed class ArchiveEntryReader : IDisposable
         return h;
     }
 
-    static Handle Open(string path)
+    static Handle Open(string path, ArchiveFormat format, string? password)
     {
-        var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024, FileOptions.RandomAccess);
+        if (format == ArchiveFormat.CompressedTar) return new Handle { Path = path, Solid = true };
+
+        var fs = ArchiveReader.OpenShared(path);
         try
         {
-            if (!path.EndsWith(".rar", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".7z", StringComparison.OrdinalIgnoreCase)
-                && !path.EndsWith(".tar", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".cbr", StringComparison.OrdinalIgnoreCase)
-                && !path.EndsWith(".cb7", StringComparison.OrdinalIgnoreCase))
+            if (format == ArchiveFormat.Iso)
+            {
+                var files = new Dictionary<string, IsoReader.IsoFile>(StringComparer.Ordinal);
+                foreach (var f in IsoReader.List(fs)) if (!f.IsDirectory) files.TryAdd(f.Path, f);
+                return new Handle { Path = path, Image = fs, IsoFiles = files };
+            }
+
+            if (format == ArchiveFormat.Zip)
             {
                 try
                 {
@@ -108,14 +153,14 @@ public sealed class ArchiveEntryReader : IDisposable
                 catch (InvalidDataException) { fs.Position = 0; }
             }
 
-            var archive = ArchiveFactory.OpenArchive(fs, new ReaderOptions
-            {
-                ArchiveEncoding = new SharpCompress.Common.ArchiveEncoding { Default = ArchiveReader.LegacyNameEncoding },
-            });
-            var entries = new Dictionary<string, IArchiveEntry>(StringComparer.Ordinal);
+            fs.Dispose();
+            var archive = ArchiveReader.OpenSharp(format == ArchiveFormat.Rar ? ArchiveReader.RarParts(path) : [path], password);
+            // Önce girdiler: başlığı şifreli RAR5'te IsSolid girdilerden önce sorulursa liste boş döner (SharpCompress).
+            var all = archive.Entries.ToList();
             bool solid = archive.IsSolid;
+            var entries = new Dictionary<string, IArchiveEntry>(StringComparer.Ordinal);
             if (!solid)
-                foreach (var e in archive.Entries)
+                foreach (var e in all)
                     if (!e.IsDirectory) entries.TryAdd(ArchiveReader.NormalizePath(e.Key ?? ""), e);
             return new Handle { Path = path, Archive = archive, Entries = entries, Solid = solid };
         }

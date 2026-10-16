@@ -1,51 +1,77 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Text;
 
 namespace ArsivAra.Core;
 
-public sealed record SearchResult(int[] Hits, TimeSpan Elapsed);
+/// <param name="Hits">Eşleşen girdiler (dizindeki sırayla).</param>
+/// <param name="Error">Sorguda geçersiz bir değer varsa türü; <paramref name="ErrorDetail"/> kullanıcının yazdığı.</param>
+/// <param name="ContentTerms">icerik: terimleri (katlanmış): dosyaların içine bakılarak sonradan uygulanır (<see cref="ContentSearch"/>).</param>
+public sealed record SearchResult(int[] Hits, TimeSpan Elapsed, QueryErrorKind Error = QueryErrorKind.None,
+    string? ErrorDetail = null, string[]? ContentTerms = null);
+
+public enum SortKey { None, Name, Folder, Size, Date, Archive, Type }
 
 /// <summary>
 /// Değişmez (immutable) arama anlık görüntüsü.
 /// Tüm arşiv içi yollar katlanmış hâlde tek bir UTF-8 tampona '\n' ile ayrılarak yazılır;
 /// arama bu tamponda vektörize IndexOf ile paralel taranır (Everything'in RAM'de tarama mantığı).
-///
-/// Sorgu sözdizimi:
-///   kelime1 kelime2   → hepsi yolda geçmeli (VE)
-///   ext:pdf;docx      → uzantı filtresi
-///   arsiv:yedek       → arşiv dosyasının yolunda geçmeli
-///   klasor: / dosya:  → sadece klasörler / sadece dosyalar
+/// Diskteki her arşivin girdilerinden hemen sonra onun iç içe arşivlerinin girdileri gelir, böylece bir arşivle
+/// sınırlı arama tamponun tek bir aralığını tarar. Sorgu dili: <see cref="QueryParser"/>.
 /// </summary>
 public sealed class SearchIndex
 {
+    /// <summary>Diskteki (en dıştaki) arşivler, kenar çubuğundaki sırayla.</summary>
+    public IReadOnlyList<ArchiveRecord> TopLevel { get; }
+
+    /// <summary>Tampondaki sırayla tüm arşivler: her diskteki arşivden hemen sonra onun iç içe arşivleri.</summary>
     public IReadOnlyList<ArchiveRecord> Archives { get; }
+
     readonly string[] _foldedArchivePaths;
     readonly byte[] _text;
     readonly int[] _offsets;   // girdi i'nin tampondaki başlangıcı; _offsets[Count] = son
     readonly int[] _archiveOf;
     readonly int[] _entryOf;
+    readonly (int Start, int End)[] _topSpans;
+    readonly Lazy<bool[]> _duplicates;
+    readonly Lazy<int[]> _nameRank, _folderRank, _typeRank;
 
     public int EntryCount => _archiveOf.Length;
     public static SearchIndex Empty { get; } = Build([]);
 
-    SearchIndex(IReadOnlyList<ArchiveRecord> archives, string[] foldedArchivePaths, byte[] text, int[] offsets, int[] archiveOf, int[] entryOf)
+    SearchIndex(IReadOnlyList<ArchiveRecord> topLevel, IReadOnlyList<ArchiveRecord> archives, (int, int)[] topSpans,
+        string[] foldedArchivePaths, byte[] text, int[] offsets, int[] archiveOf, int[] entryOf)
     {
+        TopLevel = topLevel;
         Archives = archives;
+        _topSpans = topSpans;
         _foldedArchivePaths = foldedArchivePaths;
         _text = text;
         _offsets = offsets;
         _archiveOf = archiveOf;
         _entryOf = entryOf;
+        _duplicates = new Lazy<bool[]>(ComputeDuplicates);
+        _nameRank = new Lazy<int[]>(() => ComputeRank(e => NameOf(Slice(e)), tieBreak: null));
+        _folderRank = new Lazy<int[]>(() => ComputeRank(e => FolderOf(Slice(e)), tieBreak: _nameRank.Value));
+        _typeRank = new Lazy<int[]>(() => ComputeRank(e => TypeOf(e), tieBreak: _nameRank.Value));
     }
 
-    public static SearchIndex Build(IReadOnlyList<ArchiveRecord> archives)
+    public static SearchIndex Build(IReadOnlyList<ArchiveRecord> topLevel)
     {
+        var flat = new List<ArchiveRecord>(topLevel.Count);
+        var spans = new (int, int)[topLevel.Count];
         int count = 0;
         long chars = 0;
-        foreach (var a in archives)
+        for (int t = 0; t < topLevel.Count; t++)
         {
-            count += a.Entries.Length;
-            foreach (var e in a.Entries) chars += e.Path.Length + 1;
+            int start = count;
+            foreach (var r in topLevel[t].Nested.Prepend(topLevel[t]))
+            {
+                flat.Add(r);
+                count += r.Entries.Length;
+                foreach (var e in r.Entries) chars += e.Path.Length + 1;
+            }
+            spans[t] = (start, count);
         }
 
         var archiveOf = new int[count];
@@ -55,9 +81,9 @@ public sealed class SearchIndex
         var folded = Array.Empty<char>();
         int pos = 0, idx = 0;
 
-        for (int a = 0; a < archives.Count; a++)
+        for (int a = 0; a < flat.Count; a++)
         {
-            var entries = archives[a].Entries;
+            var entries = flat[a].Entries;
             for (int j = 0; j < entries.Length; j++)
             {
                 string p = entries[j].Path;
@@ -78,9 +104,11 @@ public sealed class SearchIndex
         }
         offsets[count] = pos;
 
-        var foldedArchives = archives.Select(a => Folding.Fold(a.Path)).ToArray();
-        return new SearchIndex(archives, foldedArchives, text, offsets, archiveOf, entryOf);
+        var foldedArchives = flat.Select(a => Folding.Fold(a.DisplayPath)).ToArray();
+        return new SearchIndex(topLevel, flat, spans, foldedArchives, text, offsets, archiveOf, entryOf);
     }
+
+    // ---- Girdilere erişim ----
 
     /// <summary>Sonucun ait olduğu arşivin <see cref="Archives"/> içindeki sırası.</summary>
     public int ArchiveIndexOf(int hit) => _archiveOf[hit];
@@ -91,94 +119,89 @@ public sealed class SearchIndex
         return (a, a.Entries[_entryOf[hit]]);
     }
 
-    sealed class Query
+    internal ArchiveEntry EntryAt(int e) => Archives[_archiveOf[e]].Entries[_entryOf[e]];
+    internal bool IsDirectoryAt(int e) => EntryAt(e).IsDirectory;
+    internal long SizeAt(int e) => EntryAt(e).Size;
+    internal long MtimeAt(int e) => EntryAt(e).MtimeUtcTicks;
+
+    /// <summary>Diskteki arşivin (ve iç içe arşivlerinin) girdi aralığı; arşiv bu dizinde yoksa boş aralık.</summary>
+    public (int Start, int End) ScopeOf(string topLevelPath)
     {
-        public required byte[]? Primary;
-        public required byte[][] Others;
-        public required byte[][]? Extensions;
-        public required bool[]? ArchiveAllowed;
-        public bool? DirectoriesOnly;
+        for (int i = 0; i < TopLevel.Count; i++)
+            if (string.Equals(TopLevel[i].Path, topLevelPath, StringComparison.OrdinalIgnoreCase)) return _topSpans[i];
+        return (0, 0);
     }
 
-    Query Parse(string query)
+    ReadOnlySpan<byte> Slice(int e) => _text.AsSpan(_offsets[e], _offsets[e + 1] - _offsets[e] - 1);
+
+    /// <summary>Katlanmış yolun ad kısmı (klasörde sondaki '/' hariç).</summary>
+    internal static ReadOnlySpan<byte> NameOf(ReadOnlySpan<byte> path)
     {
-        var terms = new List<byte[]>();
-        var archiveTerms = new List<string>();
-        byte[][]? exts = null;
-        bool? dirsOnly = null;
-
-        foreach (var token in query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            string f = Folding.Fold(token);
-            if (f.StartsWith("arsiv:") || f.StartsWith("archive:"))
-            {
-                string v = f[(f.IndexOf(':') + 1)..];
-                if (v.Length > 0) archiveTerms.Add(v);
-            }
-            else if (f.StartsWith("ext:"))
-            {
-                exts = f[4..].Split([';', ','], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => Encoding.UTF8.GetBytes("." + x.TrimStart('.')))
-                    .ToArray();
-                if (exts.Length == 0) exts = null;
-            }
-            else if (f is "klasor:" or "folder:") dirsOnly = true;
-            else if (f is "dosya:" or "file:") dirsOnly = false;
-            else terms.Add(Encoding.UTF8.GetBytes(f));
-        }
-
-        // En uzun kelime genelde en seçicidir: tampon onunla taranır, diğerleri sadece adaylarda kontrol edilir.
-        terms.Sort((a, b) => b.Length.CompareTo(a.Length));
-
-        bool[]? allowed = null;
-        if (archiveTerms.Count > 0)
-        {
-            allowed = new bool[Archives.Count];
-            for (int i = 0; i < allowed.Length; i++)
-                allowed[i] = archiveTerms.All(t => _foldedArchivePaths[i].Contains(t, StringComparison.Ordinal));
-        }
-
-        return new Query
-        {
-            Primary = terms.Count > 0 ? terms[0] : null,
-            Others = terms.Skip(1).ToArray(),
-            Extensions = exts,
-            ArchiveAllowed = allowed,
-            DirectoriesOnly = dirsOnly,
-        };
+        if (path.Length > 0 && path[^1] == '/') path = path[..^1];
+        int i = path.LastIndexOf((byte)'/');
+        return i < 0 ? path : path[(i + 1)..];
     }
 
-    public SearchResult Search(string query, CancellationToken ct = default)
+    static ReadOnlySpan<byte> FolderOf(ReadOnlySpan<byte> path)
+    {
+        if (path.Length > 0 && path[^1] == '/') path = path[..^1];
+        int i = path.LastIndexOf((byte)'/');
+        return i < 0 ? [] : path[..i];
+    }
+
+    /// <summary>Tür: klasörler en başta (boş), sonra uzantıya göre.</summary>
+    ReadOnlySpan<byte> TypeOf(int e)
+    {
+        if (IsDirectoryAt(e)) return [];
+        var name = NameOf(Slice(e));
+        int dot = name.LastIndexOf((byte)'.');
+        return dot <= 0 ? "\u0001"u8 : name[dot..];
+    }
+
+    // ---- Arama ----
+
+    /// <param name="scope">Sadece bu girdi aralığında ara (kenar çubuğunda seçili arşiv: <see cref="ScopeOf"/>).</param>
+    public SearchResult Search(string query, CancellationToken ct = default, (int Start, int End)? scope = null)
     {
         var sw = Stopwatch.StartNew();
-        var q = Parse(query);
-        int n = EntryCount;
-        if (n == 0) return new SearchResult([], sw.Elapsed);
+        var q = QueryParser.Parse(query);
+        if (q.Error != QueryErrorKind.None) return new SearchResult([], sw.Elapsed, q.Error, q.ErrorDetail);
+        foreach (var node in q.ArchiveNodes)
+            node.Allowed = _foldedArchivePaths.Select(p => p.Contains(node.Term, StringComparison.Ordinal)).ToArray();
+
+        int first = Math.Clamp(scope?.Start ?? 0, 0, EntryCount), last = Math.Clamp(scope?.End ?? EntryCount, first, EntryCount);
+        string[]? content = q.ContentTerms.Count > 0 ? [.. q.ContentTerms] : null;
+        int n = last - first;
+        if (n == 0) return new SearchResult([], sw.Elapsed, ContentTerms: content);
 
         int chunks = Math.Clamp(n / 50_000, 1, Environment.ProcessorCount * 4);
         var parts = new List<int>[chunks];
+        var root = q.Root;
+        var scan = q.ScanTerm;
 
         Parallel.For(0, chunks, new ParallelOptions { CancellationToken = ct }, c =>
         {
-            int first = (int)((long)n * c / chunks);
-            int last = (int)((long)n * (c + 1) / chunks);
+            int a = first + (int)((long)n * c / chunks);
+            int b = first + (int)((long)n * (c + 1) / chunks);
             var res = new List<int>();
-            var text = _text.AsSpan();
-
-            if (q.Primary == null)
+            if (scan == null)
             {
-                for (int e = first; e < last; e++)
-                    if (Matches(e, q)) res.Add(e);
+                for (int e = a; e < b; e++)
+                {
+                    if ((e & 0x3FFF) == 0 && ct.IsCancellationRequested) break;
+                    if (root.Match(new EntryView(this, e, Slice(e)))) res.Add(e);
+                }
             }
             else
             {
-                int pos = _offsets[first], end = _offsets[last];
+                var text = _text.AsSpan();
+                int pos = _offsets[a], end = _offsets[b];
                 while (pos < end)
                 {
-                    int i = text[pos..end].IndexOf(q.Primary);
+                    int i = text[pos..end].IndexOf(scan);
                     if (i < 0) break;
-                    int e = EntryAt(pos + i);
-                    if (Matches(e, q)) res.Add(e);
+                    int e = EntryAtByte(pos + i);
+                    if (root.Match(new EntryView(this, e, Slice(e)))) res.Add(e);
                     pos = _offsets[e + 1]; // aynı girdide tekrar aramaya gerek yok
                     if (ct.IsCancellationRequested) break;
                 }
@@ -189,35 +212,194 @@ public sealed class SearchIndex
 
         var hits = new int[parts.Sum(p => p.Count)];
         int k = 0;
-        foreach (var p in parts) { p.CopyTo(hits, k); k += p.Count; }
-        return new SearchResult(hits, sw.Elapsed);
+        foreach (var p in parts)
+        {
+            p.CopyTo(hits, k);
+            k += p.Count;
+        }
+        return new SearchResult(hits, sw.Elapsed, ContentTerms: content);
     }
 
-    int EntryAt(int bytePos)
+    int EntryAtByte(int bytePos)
     {
         int i = Array.BinarySearch(_offsets, bytePos);
         return i >= 0 ? i : ~i - 1;
     }
 
-    bool Matches(int e, Query q)
+    /// <summary>Joker eşleştirme (UTF-8): '*' herhangi bir dizi, '?' tek bir karakter (kod noktası); metnin tamamına uymalı.</summary>
+    internal static bool GlobMatch(ReadOnlySpan<byte> s, ReadOnlySpan<byte> p)
     {
-        if (q.ArchiveAllowed != null && !q.ArchiveAllowed[_archiveOf[e]]) return false;
+        int si = 0, pi = 0, starP = -1, starS = 0;
+        while (si < s.Length)
+        {
+            if (pi < p.Length && p[pi] == '?')
+            {
+                si = Math.Min(s.Length, si + CodePointLength(s[si]));
+                pi++;
+            }
+            else if (pi < p.Length && p[pi] == '*')
+            {
+                starP = pi++;
+                starS = si;
+            }
+            else if (pi < p.Length && p[pi] == s[si])
+            {
+                si++;
+                pi++;
+            }
+            else if (starP >= 0)
+            {
+                pi = starP + 1;
+                starS = Math.Min(s.Length, starS + CodePointLength(s[starS]));
+                si = starS;
+            }
+            else return false;
+        }
+        while (pi < p.Length && p[pi] == '*') pi++;
+        return pi == p.Length;
+    }
 
-        var slice = _text.AsSpan(_offsets[e], _offsets[e + 1] - _offsets[e] - 1);
-        if (q.DirectoriesOnly is bool d)
+    static int CodePointLength(byte b) => b < 0xC0 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
+
+    // ---- Sıralama ----
+
+    /// <summary>Sonuçları sıralar. Ad/klasör/tür sıraları dizin başına bir kez hesaplanır, sonraki sıralamalar tamsayı karşılaştırmasıdır.</summary>
+    public int[] Sort(int[] hits, SortKey key, bool descending)
+    {
+        var result = (int[])hits.Clone();
+        switch (key)
         {
-            bool isDir = Archives[_archiveOf[e]].Entries[_entryOf[e]].IsDirectory;
-            if (isDir != d) return false;
+            case SortKey.Size: SortBy(result, h => SizeAt(h)); break;
+            case SortKey.Date: SortBy(result, h => MtimeAt(h)); break;
+            case SortKey.Name: SortBy(result, h => _nameRank.Value[h]); break;
+            case SortKey.Folder: SortBy(result, h => _folderRank.Value[h]); break;
+            case SortKey.Type: SortBy(result, h => _typeRank.Value[h]); break;
+            default: Array.Sort(result); break; // dizin sırası = arşiv adına göre, arşivin içinde kendi sırası
         }
-        if (q.Extensions != null)
+        if (descending) Array.Reverse(result);
+        return result;
+    }
+
+    /// <summary>Anahtara göre sıralar; eşit anahtarlarda dizin sırası korunur (kararlı ve tekrarlanabilir).</summary>
+    static void SortBy(int[] hits, Func<int, long> keyOf)
+    {
+        var keys = new long[hits.Length];
+        for (int i = 0; i < hits.Length; i++) keys[i] = keyOf(hits[i]);
+        Array.Sort(keys, hits);
+        for (int i = 0; i < hits.Length;)
         {
-            bool any = false;
-            foreach (var x in q.Extensions)
-                if (slice.EndsWith(x)) { any = true; break; }
-            if (!any) return false;
+            int j = i + 1;
+            while (j < hits.Length && keys[j] == keys[i]) j++;
+            if (j - i > 1) Array.Sort(hits, i, j - i);
+            i = j;
         }
-        foreach (var t in q.Others)
-            if (slice.IndexOf(t) < 0) return false;
-        return true;
+    }
+
+    delegate ReadOnlySpan<byte> KeyOf(int entry);
+
+    /// <summary>
+    /// Her girdinin anahtara göre sırası. Önce ilk 8 bayta göre (tamsayı olarak, hızlı) sıralanır,
+    /// sonra aynı ön eki paylaşan gruplar tam karşılaştırmayla; eşitlikte <paramref name="tieBreak"/>, o da eşitse dizin sırası.
+    /// </summary>
+    int[] ComputeRank(KeyOf keyOf, int[]? tieBreak)
+    {
+        int n = EntryCount;
+        var order = new int[n];
+        var prefix = new ulong[n];
+        Span<byte> buf = stackalloc byte[8];
+        for (int e = 0; e < n; e++)
+        {
+            var k = keyOf(e);
+            buf.Clear();
+            k[..Math.Min(8, k.Length)].CopyTo(buf);
+            prefix[e] = BinaryPrimitives.ReadUInt64BigEndian(buf);
+            order[e] = e;
+        }
+        Array.Sort(prefix, order);
+
+        for (int i = 0; i < n;)
+        {
+            int j = i + 1;
+            while (j < n && prefix[j] == prefix[i]) j++;
+            if (j - i > 1)
+            {
+                Array.Sort(order, i, j - i, Comparer<int>.Create((x, y) =>
+                {
+                    int c = keyOf(x).SequenceCompareTo(keyOf(y));
+                    if (c == 0 && tieBreak != null) c = tieBreak[x].CompareTo(tieBreak[y]);
+                    return c != 0 ? c : x.CompareTo(y);
+                }));
+            }
+            i = j;
+        }
+
+        var rank = new int[n];
+        for (int i = 0; i < n; i++) rank[order[i]] = i;
+        return rank;
+    }
+
+    // ---- Kopyalar ve sürümler ----
+
+    /// <summary>Girdinin bir kopyası var mı: aynı ad ve boyut, CRC'ler biliniyorsa aynı CRC (bilinmeyen CRC her şeyle eşleşir).</summary>
+    public bool IsDuplicate(int entry) => _duplicates.Value[entry];
+
+    bool[] ComputeDuplicates()
+    {
+        int n = EntryCount;
+        var keys = new List<(ulong Name, long Size, uint Crc, int Entry)>();
+        for (int e = 0; e < n; e++)
+        {
+            var en = EntryAt(e);
+            if (en.IsDirectory || en.Size <= 0) continue;
+            keys.Add((Fnv1a(NameOf(Slice(e))), en.Size, en.Crc, e));
+        }
+        keys.Sort((a, b) => a.Name != b.Name ? a.Name.CompareTo(b.Name) : a.Size.CompareTo(b.Size));
+
+        var dup = new bool[n];
+        var crcCount = new Dictionary<uint, int>();
+        for (int i = 0; i < keys.Count;)
+        {
+            int j = i + 1;
+            while (j < keys.Count && keys[j].Name == keys[i].Name && keys[j].Size == keys[i].Size) j++;
+            if (j - i > 1)
+            {
+                crcCount.Clear();
+                int unknown = 0;
+                for (int k = i; k < j; k++)
+                {
+                    if (keys[k].Crc == 0) unknown++;
+                    else crcCount[keys[k].Crc] = crcCount.GetValueOrDefault(keys[k].Crc) + 1;
+                }
+                for (int k = i; k < j; k++)
+                    dup[keys[k].Entry] = keys[k].Crc == 0 || unknown > 0 || crcCount[keys[k].Crc] > 1;
+            }
+            i = j;
+        }
+        return dup;
+    }
+
+    static ulong Fnv1a(ReadOnlySpan<byte> data)
+    {
+        ulong h = 14695981039346656037;
+        foreach (byte b in data) h = (h ^ b) * 1099511628211;
+        return h;
+    }
+
+    /// <summary>
+    /// Aynı adlı (büyük/küçük harf ve aksan duyarsız) tüm dosyalar, en yeniden eskiye: "bu dosyanın en yeni sürümü hangi yedekte".
+    /// </summary>
+    public int[] SameName(int hit)
+    {
+        if (IsDirectoryAt(hit)) return [hit];
+        byte[] name = NameOf(Slice(hit)).ToArray();
+        var list = new List<int>();
+        for (int e = 0; e < EntryCount; e++)
+            if (!IsDirectoryAt(e) && NameOf(Slice(e)).SequenceEqual(name)) list.Add(e);
+        list.Sort((a, b) =>
+        {
+            int c = MtimeAt(b).CompareTo(MtimeAt(a));
+            return c != 0 ? c : a.CompareTo(b);
+        });
+        return [.. list];
     }
 }

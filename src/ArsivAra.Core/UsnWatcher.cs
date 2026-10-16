@@ -30,8 +30,11 @@ public sealed class UsnWatcher : IDisposable
     readonly CancellationTokenSource _cts = new();
     readonly Thread _thread;
 
-    /// <summary>Değişen arşivin ya da taşınan/silinen klasörün tam yolu.</summary>
+    /// <summary>Eklenen, değişen, silinen ya da adı değişen arşiv dosyasının tam yolu.</summary>
     public event Action<string>? PathChanged;
+
+    /// <summary>Taşınan, adı değişen ya da silinen klasörün tam yolu (altındaki arşivler yeniden denetlenmeli).</summary>
+    public event Action<string>? DirectoryChanged;
 
     /// <summary>Üst klasörü artık bulunamayan (birlikte silinmiş) öğenin adı.</summary>
     public event Action<string>? NameRemoved;
@@ -104,7 +107,9 @@ public sealed class UsnWatcher : IDisposable
             NameRemoved?.Invoke(e.Name);
             return;
         }
-        PathChanged?.Invoke(Path.Combine(dir, e.Name));
+        string path = Path.Combine(dir, e.Name);
+        if (e.IsDirectory) DirectoryChanged?.Invoke(path);
+        else PathChanged?.Invoke(path);
     }
 
     public void Dispose()

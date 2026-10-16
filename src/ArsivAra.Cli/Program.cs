@@ -8,11 +8,13 @@ Console.InputEncoding = Encoding.UTF8;
 string banner = $"{AppInfo.Name} CLI {AppInfo.Version} · {AppInfo.Credit}";
 string indexPath = AppPaths.IndexFile;
 bool useMft = true;
+string? password = null;
 var rest = new List<string>();
 for (int i = 0; i < args.Length; i++)
 {
     if (args[i] == "--index" && i + 1 < args.Length) indexPath = args[++i];
     else if (args[i] == "--no-mft") useMft = false;
+    else if (args[i] == "--parola" && i + 1 < args.Length) password = args[++i];
     else if (args[i] == "--hdd-readers" && i + 1 < args.Length) Scanner.HddReaders = int.Parse(args[++i]);
     else if (args[i] == "--ssd-readers" && i + 1 < args.Length) Scanner.SsdReaders = int.Parse(args[++i]);
     else rest.Add(args[i]);
@@ -28,7 +30,7 @@ switch (command)
         RunSearch(LoadIndex(), string.Join(' ', rest.Skip(1)), 30);
         break;
     case "extract" when rest.Count == 3:
-        Console.WriteLine(ArchiveReader.ExtractToTemp(Path.GetFullPath(rest[1]), rest[2]));
+        Extract(Path.GetFullPath(rest[1]), rest[2]);
         break;
     case "mftdebug" when rest.Count >= 3:
         MftDebug(rest[1], rest.Skip(2).ToArray());
@@ -62,11 +64,15 @@ switch (command)
               ArsivAra.Cli search <sorgu>                  İndekste ara
               ArsivAra.Cli                                 Etkileşimli arama
               ArsivAra.Cli watch <klasör> [saniye]         USN Journal'dan canlı arşiv değişikliklerini yazdır (yönetici)
+              ArsivAra.Cli extract <arşiv> <iç yol>        Tek dosyayı geçici klasöre çıkar ve yolunu yazdır
               ArsivAra.Cli --version                       Sürüm ve yapımcı bilgisi
               --no-mft                                     MFT yerine klasör gezerek tara (karşılaştırma için)
               --index <dosya>                              İndeks dosyası (varsayılan: %LOCALAPPDATA%\ArsivAra\index.bin)
+              --parola <parola>                            Şifreli arşivler için
 
-            Sorgu: kelime1 kelime2  ext:pdf;docx  arsiv:yedek  klasor:  dosya:
+            Sorgu: kelime1 kelime2 (VE)  a|b (VEYA)  !kelime (DEĞİL)  "tam ifade"  *.pdf  rapor?.doc
+                   ext:pdf;docx  arsiv:yedek  klasor:  dosya:  ad:rapor  ad:="Tam Ad.pdf"
+                   boyut:>10mb  boyut:1mb..1gb  tarih:2024  tarih:>=2024-06-01  regex:^fatura_\d+  kopya:
             """);
         break;
 }
@@ -117,6 +123,24 @@ void Index(List<string> roots)
     Console.WriteLine($"İndeks kaydedildi: {indexPath} ({new FileInfo(indexPath).Length / 1024.0:N0} KB, {sw.ElapsedMilliseconds} ms)");
 }
 
+void Extract(string archivePath, string entryPath)
+{
+    var fi = new FileInfo(archivePath);
+    var rec = ArchiveReader.Read(archivePath, fi.Length, fi.LastWriteTimeUtc.Ticks, new ReadOptions { Password = password, ReadNested = false });
+    if (rec.Error != null)
+    {
+        Console.WriteLine($"Arşiv okunamadı ({rec.ErrorKind}): {rec.Error}");
+        return;
+    }
+    var entry = rec.Entries.FirstOrDefault(e => e.Path == ArchiveReader.NormalizePath(entryPath));
+    if (entry.Path == null)
+    {
+        Console.WriteLine("Arşivde bulunamadı: " + entryPath);
+        return;
+    }
+    Console.WriteLine(ArchiveExtractor.ExtractToTemp(rec, entry, password));
+}
+
 void Watch(List<string> a)
 {
     string root = Path.GetFullPath(a.Count > 0 ? a[0] : "C:\\");
@@ -128,7 +152,8 @@ void Watch(List<string> a)
         return;
     }
     using var watcher = UsnWatcher.TryStart(new VolumeJournal(vol.Root, j.JournalId, j.NextUsn))!;
-    watcher.PathChanged += p => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] değişti: {p} (var: {File.Exists(p) || Directory.Exists(p)})");
+    watcher.PathChanged += p => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] arşiv değişti: {p} (var: {File.Exists(p)})");
+    watcher.DirectoryChanged += p => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] klasör değişti: {p} (var: {Directory.Exists(p)})");
     watcher.NameRemoved += n => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] üst klasörü silinmiş: {n}");
     watcher.ResetRequired += r => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] SIFIRLAMA: {r}");
     watcher.Start();

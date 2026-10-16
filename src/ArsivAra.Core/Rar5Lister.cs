@@ -25,8 +25,12 @@ public static class Rar5Lister
     [ThreadStatic] public static int LastDiskReads, LastCacheHits;
 
     /// <summary>RAR5 değilse ya da QO kaydı yoksa/okunamazsa null.</summary>
-    public static ArchiveEntry[]? TryList(Stream stream)
+    public static ArchiveEntry[]? TryList(Stream stream) => TryList(stream, out _);
+
+    /// <param name="solid">Arşiv solid mi (bir dosyaya ulaşmak öncekileri açmayı gerektirir).</param>
+    public static ArchiveEntry[]? TryList(Stream stream, out bool solid)
     {
+        solid = false;
         var src = new Source(stream);
         LastDiskReads = 0; LastCacheHits = 0;
 
@@ -37,6 +41,8 @@ public static class Rar5Lister
         // Ana başlık: archive flags, [volume number], extra (Locator).
         var p = new Reader(main.Body);
         ulong archiveFlags = p.VInt();
+        if ((archiveFlags & 0x1) != 0) return null; // çok parçalı: QO sadece bu parçayı kapsar, tüm parçalar SharpCompress ile okunur
+        solid = (archiveFlags & 0x4) != 0;
         if ((archiveFlags & 0x2) != 0) p.VInt();
         long qoOffset = 0;
         foreach (var (type, rec) in ExtraRecords(main))
@@ -75,8 +81,9 @@ public static class Rar5Lister
         ulong unpacked = r.VInt();
         r.VInt(); // attributes
         long mtimeTicks = 0;
+        uint crc = 0;
         if ((fileFlags & 0x2) != 0) mtimeTicks = UnixToTicks(r.UInt32());
-        if ((fileFlags & 0x4) != 0) r.UInt32(); // data CRC32
+        if ((fileFlags & 0x4) != 0) crc = r.UInt32(); // içeriğin CRC32'si
         r.VInt(); // compression info
         r.VInt(); // host OS
         int nameLen = (int)r.VInt();
@@ -97,7 +104,7 @@ public static class Rar5Lister
         string path = ArchiveReader.NormalizePath(name);
         if (isDir && !path.EndsWith('/')) path += "/";
         long size = (fileFlags & 0x8) != 0 || unpacked > long.MaxValue ? 0 : (long)unpacked;
-        return new ArchiveEntry(path, isDir ? 0 : size, mtimeTicks, isDir);
+        return new ArchiveEntry(path, isDir ? 0 : size, mtimeTicks, isDir, isDir ? 0 : crc);
     }
 
     static long UnixToTicks(uint seconds) => DateTime.UnixEpoch.Ticks + seconds * TimeSpan.TicksPerSecond;

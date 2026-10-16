@@ -152,7 +152,7 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 
 Her gönderimde [CI iş akışı](.github/workflows/ci.yml) çalışır. `v1.1.0` gibi bir etiket gönderildiğinde testler çalışır, x64 ve ARM64 exe'leri derlenir,
 imzalama sırları tanımlıysa imzalanır, GitHub'da sürüm yayınlanır
-ve winget güncellenir ([iş akışı](.github/workflows/release.yml)). Adım adım yayın, winget ve kod imzalama rehberi (İngilizce): [packaging/README.md](packaging/README.md).
+ve winget güncellenir ([iş akışı](.github/workflows/release.yml)). Adım adım yayın, winget ve kod imzalama rehberi: [packaging/README.tr.md](packaging/README.tr.md).
 
 ## Sınırlar
 

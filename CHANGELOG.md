@@ -34,7 +34,7 @@
   Source code comments and the documentation are in English.
 - Moved to .NET 10 (LTS). Building needs the .NET 10 SDK (selected by `global.json`); the portable exe includes the runtime.
 - Release workflow: code signing with an SSL.com eSigner (cloud OV) certificate in addition to Azure Artifact Signing;
-  SHA256 files are computed after signing. Publishing, winget and signing guide in `packaging/README.md`.
+  SHA256 files are computed after signing. Publishing, winget and signing guide in `packaging/README.md` (Turkish: `packaging/README.tr.md`).
 - SharpCompress 0.50.4 is built from source in `src/ThirdParty/SharpCompress` instead of being referenced as a NuGet package.
   `THIRD-PARTY-NOTICES.txt` lists every component it contains with its license (UnRAR, Ms-PL, Apache 2.0, BSD, zlib, MIT).
 - winget package identifier is now `VerloraStudios.ArsivAra`.

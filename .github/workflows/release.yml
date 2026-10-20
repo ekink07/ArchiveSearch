@@ -4,8 +4,7 @@
 #   git push origin v1.1.0
 #
 # Optional secrets (Settings > Secrets and variables > Actions); a step is skipped when its secrets are missing.
-# Details: packaging/README.md
-#   Signing with SSL.com eSigner (cloud OV certificate, available from Turkey):
+#   Signing with SSL.com eSigner (cloud OV certificate):
 #     ES_USERNAME, ES_PASSWORD, ES_CREDENTIAL_ID, ES_TOTP_SECRET
 #   Signing with Azure Artifact Signing (formerly Trusted Signing; only organizations in supported countries):
 #     AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
@@ -39,9 +38,9 @@ jobs:
       matrix:
         include:
           - rid: win-x64
-            asset: ArsivAra.exe
+            suffix: ''
           - rid: win-arm64
-            asset: ArsivAra-arm64.exe
+            suffix: '-arm64'
     env:
       AZURE_SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' }}
     steps:
@@ -51,16 +50,20 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Build portable exe (${{ matrix.rid }})
+      # The app (ArsivAra.exe) and the command-line tool (ArsivAra.Cli.exe); ARM64 files get an "-arm64" suffix.
+      - name: Build portable exes (${{ matrix.rid }})
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}'.TrimStart('v')
-          dotnet publish src/ArsivAra.App -c Release -r ${{ matrix.rid }} --self-contained true `
-            -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none `
-            -p:Version=$version -o out
           New-Item -ItemType Directory dist | Out-Null
-          Move-Item out/ArsivAra.exe dist/${{ matrix.asset }}
+          foreach ($p in @(@{ Project = 'ArsivAra.App'; Exe = 'ArsivAra' }, @{ Project = 'ArsivAra.Cli'; Exe = 'ArsivAra.Cli' })) {
+            dotnet publish "src/$($p.Project)" -c Release -r ${{ matrix.rid }} --self-contained true `
+              -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true `
+              -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none `
+              -p:Version=$version -o "out/$($p.Project)"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Move-Item "out/$($p.Project)/$($p.Exe).exe" "dist/$($p.Exe)${{ matrix.suffix }}.exe"
+          }
 
       - name: Sign (Azure Artifact Signing)
         if: env.AZURE_SIGNING == 'true'
@@ -95,29 +98,28 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Sign x64 (SSL.com eSigner)
+      # Signs every exe in dist (app and command-line tool, x64 and ARM64) into "signed". Pinned to a release tag, not a branch.
+      - name: Prepare signing output folder
         if: env.SSLCOM_SIGNING == 'true'
-        uses: sslcom/esigner-codesign@develop
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.ES_CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}/dist/ArsivAra.exe
-          override: true
+        run: mkdir -p signed
 
-      - name: Sign ARM64 (SSL.com eSigner)
+      - name: Sign (SSL.com eSigner)
         if: env.SSLCOM_SIGNING == 'true'
-        uses: sslcom/esigner-codesign@develop
+        uses: sslcom/esigner-codesign@v1.3.2
         with:
-          command: sign
+          command: batch_sign
           username: ${{ secrets.ES_USERNAME }}
           password: ${{ secrets.ES_PASSWORD }}
           credential_id: ${{ secrets.ES_CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ github.workspace }}/dist/ArsivAra-arm64.exe
-          override: true
+          dir_path: ${{ github.workspace }}/dist
+          output_path: ${{ github.workspace }}/signed
+
+      - name: Replace the exes with the signed copies
+        if: env.SSLCOM_SIGNING == 'true'
+        run: |
+          ls -l signed
+          for f in signed/*.exe; do mv -f "$f" dist/; done
 
       # Hashes are taken after signing: install.ps1 and winget verify them.
       - name: SHA256
@@ -141,21 +143,42 @@ jobs:
     env:
       WINGET: ${{ secrets.WINGET_TOKEN != '' }}
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: release-files
           path: dist
 
+      # The release notes are this version's section of CHANGELOG.md ("## 1.2.3 ..." up to the next "## ").
+      - name: Release notes from CHANGELOG.md
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          $notes = [System.Collections.Generic.List[string]]::new()
+          $inside = $false
+          foreach ($line in Get-Content CHANGELOG.md -Encoding utf8) {
+            if ($line -match '^## ') {
+              if ($inside) { break }
+              $inside = $line -match "^## $([regex]::Escape($version))(\s|$)"
+              continue
+            }
+            if ($inside) { $notes.Add($line) }
+          }
+          if ($notes.Count -eq 0) { $notes.Add("See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).") }
+          Set-Content -Path release-notes.md -Value ($notes -join "`n").Trim() -Encoding utf8
+
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          generate_release_notes: true
+          body_path: release-notes.md
 
       - name: Submit the winget update
         if: env.WINGET == 'true'
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: VerloraStudios.ArsivAra
-          installers-regex: '\.exe$'
+          # Only the app exes; the command-line tool is not part of the winget package.
+          installers-regex: '^ArsivAra(-arm64)?\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}

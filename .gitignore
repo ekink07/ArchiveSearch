@@ -9,3 +9,6 @@ publish-*/
 
 # Data folder created next to the exe in portable mode
 ArsivAra-veri/
+
+# Maintainer notes kept only on this computer
+_notlar/

@@ -64,7 +64,10 @@ Optionen: `-Desktop` (Desktop-Verknüpfung), `-Uninstall`, `-Uninstall -RemoveDa
 winget install VerloraStudios.ArsivAra
 ```
 
+(Verfügbar, sobald das Paket in das winget-Repository aufgenommen wurde.)
+
 **Manuell**: `ArsivAra.exe` (x64) oder `ArsivAra-arm64.exe` aus dem [neuesten Release](https://github.com/ekink07/ArchiveSearch/releases/latest) laden und starten.
+Dort liegt auch das Kommandozeilenwerkzeug: `ArsivAra.Cli.exe` (x64) oder `ArsivAra.Cli-arm64.exe`.
 Mit einer leeren `portable.txt` neben der exe (oder auf einem USB-Stick) liegen Einstellungen und Bibliothek im Ordner `ArsivAra-veri` daneben.
 
 ## Bedienung
@@ -104,14 +107,11 @@ Benötigt das [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) u
 
 ```powershell
 git clone https://github.com/ekink07/ArchiveSearch.git
-cd ArsivAra
+cd ArchiveSearch
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # Unit-Tests mit echten Beispielarchiven
 pwsh tests/ui/ui-smoke.ps1                   # UI-Smoke-Test über UI Automation (Release-Build)
 ```
-
-Ein Tag wie `v1.1.0` startet Tests, baut x64- und ARM64-exe, signiert sie bei vorhandenen Secrets,
-veröffentlicht ein GitHub-Release und aktualisiert winget. Anleitung für Veröffentlichung, winget und Codesignatur (Englisch): [packaging/README.md](packaging/README.md).
 
 ## Einschränkungen
 

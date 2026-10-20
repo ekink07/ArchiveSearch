@@ -65,7 +65,10 @@ Seçeneklerle (`-Desktop` masaüstü kısayolu, `-Uninstall` kaldırma, `-Uninst
 winget install VerloraStudios.ArsivAra
 ```
 
+(Paket winget deposuna kabul edildikten sonra kullanılabilir.)
+
 **Elle**: [son sürümden](https://github.com/ekink07/ArchiveSearch/releases/latest) `ArsivAra.exe` (x64) ya da `ArsivAra-arm64.exe` dosyasını indirip çalıştırın.
+Komut satırı aracı da orada: `ArsivAra.Cli.exe` (x64) ya da `ArsivAra.Cli-arm64.exe`.
 
 **Taşınabilir**: exe'nin yanına boş bir `portable.txt` koyarsanız (ya da USB bellekten çalıştırırsanız) ayarlar ve kütüphane yanındaki
 `ArsivAra-veri` klasöründe tutulur. Aksi hâlde `%LOCALAPPDATA%\ArsivAra` içindedir.
@@ -129,7 +132,7 @@ Windows'ta [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) gere
 
 ```powershell
 git clone https://github.com/ekink07/ArchiveSearch.git
-cd ArsivAra
+cd ArchiveSearch
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # gerçek örnek arşivlerle birim testleri
 pwsh tests/ui/ui-smoke.ps1                   # UI Automation ile arayüz duman testi (Release derlemesi)
@@ -148,11 +151,7 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `src/ArsivAra.Cli` | Komut satırı aracı: `index`, `search`, `extract`, `watch`, `lisans` |
 | `src/ThirdParty` | SharpCompress 0.50.4 kaynak kodu (RAR, 7z, TAR, XZ, BZip2 ve Zstandard çözücüleri), bkz. [README](src/ThirdParty/README.md) |
 | `tests/` | WinRAR, 7-Zip ve IMAPI2 ile üretilmiş örnek arşivlerle xUnit testleri; arayüz duman testi |
-| `tools/` | Simgeler, ekran görüntüleri ve paylaşım kartı, test arşivleri, bağlantıları başka bir GitHub hesabına ya da depoya yönlendiren `set-github-user.ps1` |
-
-Her gönderimde [CI iş akışı](.github/workflows/ci.yml) çalışır. `v1.1.0` gibi bir etiket gönderildiğinde testler çalışır, x64 ve ARM64 exe'leri derlenir,
-imzalama sırları tanımlıysa imzalanır, GitHub'da sürüm yayınlanır
-ve winget güncellenir ([iş akışı](.github/workflows/release.yml)). Adım adım yayın, winget ve kod imzalama rehberi: [packaging/README.tr.md](packaging/README.tr.md).
+| `tools/` | Simgeler, ekran görüntüleri ve paylaşım kartı ve test arşivleri |
 
 ## Sınırlar
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0
+## 1.1.0 - 2026-10-20
 
 ### Added
 
@@ -23,7 +23,6 @@
 - Single instance: opening another archive passes it to the running window.
 - ARM64 build; the installer picks the right one and registers the app under *Settings › Apps* with an uninstaller.
 - Unit tests (xUnit, real archives made by WinRAR, 7-Zip and IMAPI2), a UI smoke test through UI Automation, and CI on every push.
-- Release workflow: x64 and ARM64, optional code signing (Azure Trusted Signing) and winget updates. `tools/set-github-user.ps1` points all links to a GitHub owner and repository.
 - Website: search syntax and license sections, social preview card, live demo with the new syntax.
 - New logo (`docs/images/logo-arsiv.svg`) for the app icon, window, empty screen, website and README; "Created By MaledictusMaggot®" in the app, site and README.
 
@@ -33,11 +32,10 @@
   Español stay available under *Settings › Language*, where *System language* follows the Windows display language.
   Source code comments and the documentation are in English.
 - Moved to .NET 10 (LTS). Building needs the .NET 10 SDK (selected by `global.json`); the portable exe includes the runtime.
-- Release workflow: code signing with an SSL.com eSigner (cloud OV) certificate in addition to Azure Artifact Signing;
-  SHA256 files are computed after signing. Publishing, winget and signing guide in `packaging/README.md` (Turkish: `packaging/README.tr.md`).
 - SharpCompress 0.50.4 is built from source in `src/ThirdParty/SharpCompress` instead of being referenced as a NuGet package.
   `THIRD-PARTY-NOTICES.txt` lists every component it contains with its license (UnRAR, Ms-PL, Apache 2.0, BSD, zlib, MIT).
 - winget package identifier is now `VerloraStudios.ArsivAra`.
+- Releases also contain the command-line tool (`ArsivAra.Cli.exe`, `ArsivAra.Cli-arm64.exe`) and a `.sha256` file for every exe.
 - The index file format is version 2; older libraries are converted automatically and a backup of the old file is kept.
   An unreadable library is set aside instead of being overwritten.
 - Settings and the library live in `%LOCALAPPDATA%\ArsivAra`; portable mode is used when the exe sits on a USB drive

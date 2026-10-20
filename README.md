@@ -65,7 +65,10 @@ With options (`-Desktop` for a desktop shortcut, `-Uninstall`, `-Uninstall -Remo
 winget install VerloraStudios.ArsivAra
 ```
 
+(Available once the package has been accepted into the winget repository.)
+
 **Manual**: download `ArsivAra.exe` (x64) or `ArsivAra-arm64.exe` from the [latest release](https://github.com/ekink07/ArchiveSearch/releases/latest) and run it.
+The command-line tool is there too: `ArsivAra.Cli.exe` (x64) or `ArsivAra.Cli-arm64.exe`.
 
 **Portable**: put an empty `portable.txt` next to the exe (or run it from a USB drive) and settings and the library are kept
 in an `ArsivAra-veri` folder beside it. Otherwise they live in `%LOCALAPPDATA%\ArsivAra`.
@@ -129,7 +132,7 @@ Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) on
 
 ```powershell
 git clone https://github.com/ekink07/ArchiveSearch.git
-cd ArsivAra
+cd ArchiveSearch
 dotnet run --project src/ArsivAra.App -c Release
 dotnet test tests/ArsivAra.Core.Tests        # unit tests on real sample archives
 pwsh tests/ui/ui-smoke.ps1                   # UI smoke test through UI Automation (Release build)
@@ -148,11 +151,7 @@ dotnet publish src/ArsivAra.App -c Release -r win-x64 --self-contained true -p:P
 | `src/ArsivAra.Cli` | Command-line tool: `index`, `search`, `extract`, `watch`, `lisans` |
 | `src/ThirdParty` | SharpCompress 0.50.4 source code (RAR, 7z, TAR, XZ, BZip2 and Zstandard decoders), see [its README](src/ThirdParty/README.md) |
 | `tests/` | xUnit tests with sample archives made by WinRAR, 7-Zip and IMAPI2; UI smoke test |
-| `tools/` | Icons, screenshots and social card, test archives, `set-github-user.ps1` to point the links to another GitHub owner or repository |
-
-Every push runs the [CI workflow](.github/workflows/ci.yml). Pushing a tag such as `v1.1.0` runs the tests, builds the x64 and ARM64 exes,
-signs them when signing secrets are set, publishes a GitHub release
-and updates winget ([workflow](.github/workflows/release.yml)). Step-by-step publishing, winget and code signing guide: [packaging/README.md](packaging/README.md).
+| `tools/` | Icons, screenshots and social card and test archives |
 
 ## Limitations
 

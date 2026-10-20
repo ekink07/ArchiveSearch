@@ -15,7 +15,7 @@
     <!-- Version, product name and creator information: ../../Directory.Build.props -->
     <Title>Arşiv Ara</Title>
     <AssemblyTitle>Arşiv Ara</AssemblyTitle>
-    <Description>ZIP, RAR, 7z, TAR ve ISO arşivlerinin içinde, açmadan anında arama.</Description>
+    <Description>Search inside ZIP, RAR, 7z, TAR and ISO archives instantly, without extracting them.</Description>
     <RootNamespace>ArsivAra.App</RootNamespace>
   </PropertyGroup>
 

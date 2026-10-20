@@ -1,0 +1,45 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a problem. Security problems: please use the private report described in [SECURITY.md](https://github.com/ekink07/ArchiveSearch/blob/main/SECURITY.md) instead.
+  - type: input
+    id: version
+    attributes:
+      label: Arşiv Ara version
+      description: Shown in the About window (F1).
+      placeholder: 1.1.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2, x64
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How was it installed?
+      options:
+        - install.ps1
+        - winget
+        - Downloaded exe
+        - Built from source
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Steps to reproduce, what you expected and what happened instead. Archive type (ZIP, RAR, 7z, TAR, ISO) and size help.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: If the app recorded an error, paste it from the "gunluk" folder in %LOCALAPPDATA%\ArsivAra (or next to the exe in portable mode).
+      render: text

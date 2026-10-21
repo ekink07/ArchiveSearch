@@ -37,7 +37,7 @@ $Exe = (Resolve-Path $Exe).Path
 $Out = (Resolve-Path $Out).Path
 $fixtures = Join-Path $root 'tests\ArsivAra.Core.Tests\Fixtures'
 $work = Join-Path ([IO.Path]::GetTempPath()) ('arsivara-shots-' + [guid]::NewGuid().ToString('N'))
-$samples = Join-Path $work 'samples'
+$samples = Join-Path $work 'Archives'
 New-Item -ItemType Directory -Force $samples | Out-Null
 
 # ---------------------------------------------------------------- sample archives
@@ -152,8 +152,8 @@ Copy-Item $tar "$samples\source.tar.gz"
 Copy-Item "$fixtures\7z-solid.7z" "$samples\archive.7z"
 Copy-Item "$fixtures\udf.iso" "$samples\Setup_Disc.iso"
 Copy-Item "$fixtures\rar5-sifreli-baslik.rar" "$samples\Accounting_2024.rar"
-$archives = Get-ChildItem $samples -File | Sort-Object Name | ForEach-Object FullName
-Write-Host "Sample archives: $($archives.Count)"
+$sampleNames = Get-ChildItem $samples -File | Sort-Object Name | ForEach-Object Name
+Write-Host "Sample archives: $($sampleNames.Count)"
 
 # ---------------------------------------------------------------- app and capture
 
@@ -217,7 +217,15 @@ function Close-App($app) {
 }
 
 $apps = @()
+$drive = $null
 try {
+  # The preview pane shows each archive's full path; a temporary virtual drive keeps the user profile path out of the images.
+  $drive = 'EFGHIJKLMNOPQRSTUVWXYZ'.ToCharArray() | ForEach-Object { "$($_):" } | Where-Object { -not (Test-Path "$_\") } | Select-Object -First 1
+  if (-not $drive) { throw 'No free drive letter for the sample archives' }
+  & "$env:SystemRoot\System32\subst.exe" $drive $work
+  if ($LASTEXITCODE) { $drive = $null; throw 'subst could not map a drive for the sample archives' }
+  $archives = $sampleNames | ForEach-Object { "$drive\Archives\$_" }
+
   # 1) First start
   $app = Start-App 'empty' "{ ""Language"": ""$Language"", ""ShowPreview"": false }" @(); $apps += $app
   Find $app.Root 'EmptyScanDisks' | Out-Null
@@ -254,5 +262,6 @@ try {
 }
 finally {
   foreach ($a in $apps) { if (-not $a.Process.HasExited) { $a.Process.Kill() } }
+  if ($drive) { & "$env:SystemRoot\System32\subst.exe" $drive /d }
   Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 }
